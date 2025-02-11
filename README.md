@@ -1,4 +1,8 @@
-# Data Scraper
+# Data Marketplace Aggregator
+
+[![Security Scanning](https://github.com/chrisns/proto-data-market-aggregator/actions/workflows/security.yml/badge.svg)](https://github.com/chrisns/proto-data-market-aggregator/actions/workflows/security.yml) ![GitHub License](https://img.shields.io/github/license/chrisns/proto-data-market-aggregator) ![GitHub language count](https://img.shields.io/github/languages/count/chrisns/proto-data-market-aggregator) ![GitHub top language](https://img.shields.io/github/languages/top/chrisns/proto-data-market-aggregator)
+
+🔗 **Live Demo**: [https://proto-data-market-aggregator.chrisns.workers.dev/](https://proto-data-market-aggregator.chrisns.workers.dev/)
 
 A Cloudflare Worker that aggregates and searches across multiple data sources including Snowflake, Databricks, ONS, Defra, and Agrimetrics. This service provides a unified search interface for government and commercial data marketplaces.
 
@@ -125,12 +129,12 @@ The integration with Agrimetrics uses their catalog API with the following param
 
 1. Basic Search:
    ```
-   https://your-worker.workers.dev/?search=soil
+   https://proto-data-market-aggregator.chrisns.workers.dev/?search=soil
    ```
 
 2. Multi-word Search:
    ```
-   https://your-worker.workers.dev/?search=soil%20quality
+   https://proto-data-market-aggregator.chrisns.workers.dev/?search=soil%20quality
    ```
 
 ### Response Format
