@@ -8,13 +8,14 @@ router.get("/", async ({ query }) => {
 	const snowflake = query.search ? await fetchDataSnowflake(query.search as string) : []
 	const databricks = query.search ? await fetchDataDatabricks(query.search as string) : []
 	const ons = query.search ? await fetchDataONS(query.search as string) : []
+	const datagovuk = query.search ? await fetchDataGovUK(query.search as string) : []
 
 	if (!query.search) {
 		query.search = "search for something"
 	}
 
-	// Interweave results from all three sources
-	const maxLength = Math.max(snowflake.length, databricks.length, ons.length);
+	// Interweave results from all sources
+	const maxLength = Math.max(snowflake.length, databricks.length, ons.length, datagovuk.length);
 	const interweavedResults = [];
 
 	for (let i = 0; i < maxLength; i++) {
@@ -26,6 +27,9 @@ router.get("/", async ({ query }) => {
 		}
 		if (ons[i]) {
 			interweavedResults.push(ons[i]);
+		}
+		if (datagovuk[i]) {
+			interweavedResults.push(datagovuk[i]);
 		}
 	}
 
@@ -71,6 +75,27 @@ interface ONSSearchResponse {
 				modified: string;
 			}>;
 		};
+	};
+}
+
+interface DataGovUKResponse {
+	success: boolean;
+	result: {
+		results: Array<{
+			id: string;
+			title: string;
+			notes: string;
+			metadata_modified: string;
+			organization?: {
+				title: string;
+				description: string;
+			};
+			url?: string;
+			extras?: Array<{
+				key: string;
+				value: string;
+			}>;
+		}>;
 	};
 }
 
@@ -168,6 +193,39 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 		url: item.origin?.link || `https://ons.metadata.works/browser/dataset/${item.id}/0`,
 		source: "ONS",
 		updated: new Date(item.modified).toLocaleString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+		}).replace(',', '')
+	}));
+}
+
+async function fetchDataGovUK(searchParam: string): Promise<ListingResult[]> {
+	const response = await fetch(`https://data.gov.uk/api/action/package_search?q=${encodeURIComponent(searchParam)}`, {
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+		}
+	});
+	const data = await response.json() as DataGovUKResponse;
+
+	if (!data.success) {
+		return [];
+	}
+
+	return data.result.results.map(item => ({
+		id: item.id,
+		title: item.title,
+		description: item.notes,
+		subtitle: item.extras?.find(e => e.key === 'theme-primary')?.value || "",
+		provider: {
+			title: item.organization?.title || "data.gov.uk",
+			description: item.organization?.description || "UK Government Data Portal",
+		},
+		url: item.url || `https://data.gov.uk/dataset/${item.id}`,
+		source: "data.gov.uk",
+		updated: new Date(item.metadata_modified).toLocaleString('en-GB', {
 			hour: '2-digit',
 			minute: '2-digit',
 			day: '2-digit',
