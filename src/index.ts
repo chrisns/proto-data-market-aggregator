@@ -8,14 +8,21 @@ router.get("/", async ({ query }) => {
 	const snowflake = query.search ? await fetchDataSnowflake(query.search as string) : []
 	const databricks = query.search ? await fetchDataDatabricks(query.search as string) : []
 	const ons = query.search ? await fetchDataONS(query.search as string) : []
-	const datagovuk = query.search ? await fetchDataGovUK(query.search as string) : []
+	const defra = query.search ? await fetchDataDefra(query.search as string) : []
+	const agrimetrics = query.search ? await fetchDataAgrimetrics(query.search as string) : []
 
 	if (!query.search) {
 		query.search = "search for something"
 	}
 
 	// Interweave results from all sources
-	const maxLength = Math.max(snowflake.length, databricks.length, ons.length, datagovuk.length);
+	const maxLength = Math.max(
+		snowflake.length,
+		databricks.length,
+		ons.length,
+		defra.length,
+		agrimetrics.length
+	);
 	const interweavedResults = [];
 
 	for (let i = 0; i < maxLength; i++) {
@@ -28,8 +35,11 @@ router.get("/", async ({ query }) => {
 		if (ons[i]) {
 			interweavedResults.push(ons[i]);
 		}
-		if (datagovuk[i]) {
-			interweavedResults.push(datagovuk[i]);
+		if (defra[i]) {
+			interweavedResults.push(defra[i]);
+		}
+		if (agrimetrics[i]) {
+			interweavedResults.push(agrimetrics[i]);
 		}
 	}
 
@@ -78,25 +88,76 @@ interface ONSSearchResponse {
 	};
 }
 
-interface DataGovUKResponse {
-	success: boolean;
-	result: {
-		results: Array<{
-			id: string;
-			title: string;
-			notes: string;
-			metadata_modified: string;
-			organization?: {
+interface DefraSearchResponse {
+	props: {
+		pageProps: {
+			datasets: Array<{
+				id: string;
 				title: string;
 				description: string;
-			};
-			url?: string;
-			extras?: Array<{
-				key: string;
-				value: string;
+				creator: string;
+				modified: number;
+				tags: string[];
 			}>;
-		}>;
+		};
 	};
+}
+
+interface AgrimetricsDataSet {
+	id: string;
+	title: string;
+	description: string;
+	tags: string[];
+	visibility: string;
+	creator: string;
+	summary: string;
+	category: string;
+	distributions: Array<{
+		id: string;
+		title: string;
+		description: string;
+		accessURL?: string;
+		downloadURL?: string;
+	}>;
+	resources: Array<{
+		id: string;
+		title: string;
+		description: string;
+		url: string;
+	}>;
+	modified: string;
+}
+
+interface AgrimetricsSearchResponse {
+	dataSets: AgrimetricsDataSet[];
+	total: number;
+	offset: number;
+	limit: number;
+}
+
+interface SnowflakeListing {
+	type: string;
+	typeSpecific: {
+		globalName: string;
+		listing: {
+			title: string;
+			description: string;
+			subtitle: string;
+			provider: {
+				title: string;
+				description: string;
+				image?: string;
+			};
+			url: string;
+			lastPublished: string;
+		};
+	};
+}
+
+interface SnowflakeResponse {
+	resultGroups: Array<{
+		results: SnowflakeListing[];
+	}>;
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -112,9 +173,11 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 		"method": "POST"
 	});
 
-	return (await response.json()).resultGroups[0].results
-		.filter(item => item.type === "listing")
-		.map(item => {
+	const data = await response.json() as SnowflakeResponse;
+
+	return data.resultGroups[0].results
+		.filter((item: SnowflakeListing) => item.type === "listing")
+		.map((item: SnowflakeListing) => {
 			return {
 				id: item.typeSpecific.globalName,
 				title: item.typeSpecific.listing.title,
@@ -145,9 +208,29 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 		}
 	})
 
-	const results = await response.json()
+	interface DatabricksListing {
+		id: string;
+		summary: {
+			name: string;
+			subtitle: string;
+			updated_at: string;
+		};
+		detail: {
+			description: string;
+		};
+		provider_summary: {
+			name: string;
+			description: string;
+		};
+	}
 
-	const formatted_results = results.listings.map((item: any) => {
+	interface DatabricksResponse {
+		listings: DatabricksListing[];
+	}
+
+	const results = await response.json() as DatabricksResponse;
+
+	const formatted_results = results.listings.map((item: DatabricksListing) => {
 		return {
 			id: item.id,
 			title: item.summary.name,
@@ -202,30 +285,72 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 	}));
 }
 
-async function fetchDataGovUK(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch(`https://data.gov.uk/api/action/package_search?q=${encodeURIComponent(searchParam)}`, {
-		cf: {
-			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
-		}
-	});
-	const data = await response.json() as DataGovUKResponse;
+async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
+	const response = await fetch(`https://environment.data.gov.uk/searchresults?query=${encodeURIComponent(searchParam)}&searchtype=&orderby=default&pagesize=10&page=1`);
+	const html = await response.text();
 
-	if (!data.success) {
+	// Extract the JSON data from the __NEXT_DATA__ script tag
+	const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+	if (!scriptTagMatch) {
 		return [];
 	}
 
-	return data.result.results.map(item => ({
+	const data = JSON.parse(scriptTagMatch[1]) as DefraSearchResponse;
+
+	return data.props.pageProps.datasets.map(item => ({
 		id: item.id,
 		title: item.title,
-		description: item.notes,
-		subtitle: item.extras?.find(e => e.key === 'theme-primary')?.value || "",
+		description: item.description,
+		subtitle: item.tags?.join(", ") || "",
 		provider: {
-			title: item.organization?.title || "data.gov.uk",
-			description: item.organization?.description || "UK Government Data Portal",
+			title: item.creator,
+			description: "Defra Data Services Platform",
 		},
-		url: item.url || `https://data.gov.uk/dataset/${item.id}`,
-		source: "data.gov.uk",
-		updated: new Date(item.metadata_modified).toLocaleString('en-GB', {
+		url: `https://environment.data.gov.uk/dataset/${item.id}`,
+		source: "Defra",
+		updated: new Date(item.modified).toLocaleString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+		}).replace(',', '')
+	}));
+}
+
+async function fetchDataAgrimetrics(searchParam: string): Promise<ListingResult[]> {
+	const baseUrl = "https://app.agrimetrics.co.uk/backend/catalog/api/catalog/data-sets";
+	const params = new URLSearchParams({
+		exchange: "agrimetrics",
+		tagRelationship: "narrower",
+		extendedText: searchParam,
+		onlyFeatured: "false",
+		onlyOwned: "false",
+		showHidden: "false",
+		showEditable: "false",
+		identities: "PUBLIC",
+		offset: "0",
+		limit: "13",
+		sort: "relevance"
+	});
+
+	const response = await fetch(`${baseUrl}?${params.toString()}`);
+	const data = await response.json() as AgrimetricsSearchResponse;
+
+	return data.dataSets.map((item: AgrimetricsDataSet) => ({
+		id: item.id,
+		title: item.title,
+		description: item.description,
+		subtitle: item.tags?.join(", ") || "",
+		provider: {
+			title: item.creator,
+			description: "Agrimetrics Data Marketplace",
+		},
+		url: item.distributions?.[0]?.accessURL ||
+			item.distributions?.[0]?.downloadURL ||
+			`https://app.agrimetrics.co.uk/catalog/datasets/${item.id}`,
+		source: "Agrimetrics",
+		updated: new Date(item.modified).toLocaleString('en-GB', {
 			hour: '2-digit',
 			minute: '2-digit',
 			day: '2-digit',
@@ -240,4 +365,3 @@ router.all("*", () => new Response("404, not found!", { status: 404 }))
 export default {
 	fetch: router.fetch
 } satisfies ExportedHandler<Env>;
-
