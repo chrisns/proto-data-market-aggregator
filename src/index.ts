@@ -114,7 +114,11 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 }
 
 async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings")
+	const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings", {
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds (14 * 24 * 60 * 60)
+		}
+	})
 
 	const results = await response.json()
 
