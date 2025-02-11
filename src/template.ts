@@ -37,14 +37,11 @@ const template = (searchterm: string, results: ListingResult[]) => {
 <meta name="theme-color" content="#0b0c0c">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-<link rel="manifest" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/assets/manifest.json">
 <link rel="shortcut icon" sizes="16x16 32x32 48x48" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/assets/images/favicon.ico" type="image/x-icon">
-<link rel="mask-icon" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/assets/images/govuk-icon-mask.svg" color="#0b0c0c">
 
 <link rel="stylesheet" href="https://datamarketplace.gov.uk/lib/bootstrap/dist/css/bootstrap.min.css" />
 <link rel="stylesheet" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/govuk-frontend.min.css">
 <link rel="stylesheet" href="https://datamarketplace.gov.uk/css/site.css?v=Vd7D5LXtUBbAA63hSnmCMYo12gL9vArQpEfVam5Q6jY" />
-<link rel="stylesheet" href="https://datamarketplace.gov.uk/lib/chartjs/Chart.css" />
     
     <link rel="stylesheet" href="https://datamarketplace.gov.uk/css/dataset-results.min.css" />
     <style>
@@ -527,20 +524,10 @@ const template = (searchterm: string, results: ListingResult[]) => {
         </div>
     </div>
 </footer>
-    <script src="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/govuk-frontend.min.js"></script>
-<script type="module">
-    import { initAll } from '/lib/govuk-frontend/dist/govuk/govuk-frontend.min.js';
-    initAll();
-</script>
 <script>
     document.body.className += " js-enabled" + ("noModule" in HTMLScriptElement.prototype ? " govuk-frontend-supported" : "");
 </script>
-<script src="https://datamarketplace.gov.uk/js/cddo.min.js"></script>
-<script src="https://datamarketplace.gov.uk/lib/jquery/dist/jquery.min.js"></script>
-<script src="https://datamarketplace.gov.uk/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://datamarketplace.gov.uk/lib/chartjs/Chart.min.js?v=fB_aYgwntDvu6ayPJYHbKuFNF2RQIy-pjx7rpnUpw4g"></script>
 
-<script src="https://datamarketplace.gov.uk/govuk-frontend-4.8.0.min.js"></script><script>window.GOVUKFrontend.initAll()</script>
 </body>
 </html>`
 }

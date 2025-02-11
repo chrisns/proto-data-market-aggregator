@@ -5,15 +5,23 @@ import template from "./template"
 const router = Router()
 
 router.get("/", async ({ query }) => {
-	const snowflake = query.search ? await fetchDataSnowflake(query.search as string) : []
-	const databricks = query.search ? await fetchDataDatabricks(query.search as string) : []
-	const ons = query.search ? await fetchDataONS(query.search as string) : []
-	const defra = query.search ? await fetchDataDefra(query.search as string) : []
-	const agrimetrics = query.search ? await fetchDataAgrimetrics(query.search as string) : []
+	const searchTerm = query.search as string;
 
-	if (!query.search) {
-		query.search = "search for something"
+	if (!searchTerm) {
+		return new Response(template("search for something", []), {
+			headers: {
+				"content-type": "text/html;charset=UTF-8",
+			}
+		});
 	}
+
+	const [snowflake, databricks, ons, defra, agrimetrics] = await Promise.all([
+		fetchDataSnowflake(searchTerm),
+		fetchDataDatabricks(searchTerm),
+		fetchDataONS(searchTerm),
+		fetchDataDefra(searchTerm),
+		fetchDataAgrimetrics(searchTerm)
+	]);
 
 	// Interweave results from all sources
 	const maxLength = Math.max(
@@ -43,13 +51,11 @@ router.get("/", async ({ query }) => {
 		}
 	}
 
-	const response = template(query.search as string, interweavedResults)
-	return new Response(response, {
+	return new Response(template(searchTerm, interweavedResults), {
 		headers: {
 			"content-type": "text/html;charset=UTF-8",
 		}
 	});
-	return new Response("Hello, world! This is the root page of your Worker template.")
 })
 
 interface ListingProvider {
@@ -170,7 +176,12 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 			client: "marketplaceSearch",
 			resultGroups: true
 		}),
-		"method": "POST"
+		"method": "POST",
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+			cacheEverything: true,
+			cacheKey: `snowflake-${searchParam}`
+		}
 	});
 
 	const data = await response.json() as SnowflakeResponse;
@@ -205,6 +216,8 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 	const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings", {
 		cf: {
 			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds (14 * 24 * 60 * 60)
+			cacheEverything: true,
+			cacheKey: `databricks`
 		}
 	})
 
@@ -261,7 +274,13 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 }
 
 async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch(`https://ons.metadata.works/_next/data/QT8kYMhY79tILeprNK9a8/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`);
+	const response = await fetch(`https://ons.metadata.works/_next/data/QT8kYMhY79tILeprNK9a8/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`, {
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+			cacheEverything: true,
+			cacheKey: `ons-${searchParam}`
+		}
+	});
 	const data = await response.json() as ONSSearchResponse;
 
 	return data.pageProps.searchResult.content.map(item => ({
@@ -286,7 +305,13 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 }
 
 async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch(`https://environment.data.gov.uk/searchresults?query=${encodeURIComponent(searchParam)}&searchtype=&orderby=default&pagesize=10&page=1`);
+	const response = await fetch(`https://environment.data.gov.uk/searchresults?query=${encodeURIComponent(searchParam)}&searchtype=&orderby=default&pagesize=10&page=1`, {
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+			cacheEverything: true,
+			cacheKey: `defra-${searchParam}`
+		}
+	});
 	const html = await response.text();
 
 	// Extract the JSON data from the __NEXT_DATA__ script tag
@@ -335,7 +360,13 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 			sort: "relevance"
 		});
 
-		const response = await fetch(`${baseUrl}?${params.toString()}`);
+		const response = await fetch(`${baseUrl}?${params.toString()}`, {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `agrimetrics-${query}`
+			}
+		});
 		const data = await response.json() as AgrimetricsSearchResponse;
 
 		return data.dataSets.map((item: AgrimetricsDataSet) => ({

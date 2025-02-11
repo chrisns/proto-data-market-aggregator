@@ -150,7 +150,16 @@ describe('Data Scraper', () => {
 			await worker.fetch(request, env, ctx);
 			await waitOnExecutionContext(ctx);
 
-			expect(global.fetch).toHaveBeenCalledWith(expectedUrl);
+			expect(global.fetch).toHaveBeenCalledWith(
+				expectedUrl,
+				expect.objectContaining({
+					cf: {
+						cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 },
+						cacheEverything: true,
+						cacheKey: `agrimetrics-${searchTerm}`
+					}
+				})
+			);
 		});
 
 		it('correctly processes and formats Agrimetrics search results', async () => {
