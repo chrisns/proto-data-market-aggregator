@@ -99,7 +99,7 @@ const template = (searchterm: string, results: ListingResult[]) => {
             </a>
         </div>
         <div class="govuk-header__content">
-            <a href="https://datamarketplace.gov.uk" class="govuk-header__link govuk-header__service-name">
+            <a href="https://github.com/chrisns/proto-data-market-aggregator" class="govuk-header__link govuk-header__service-name">
                 CNS POC - Data Marketplace
             </a>
         </div>
@@ -111,7 +111,7 @@ const template = (searchterm: string, results: ListingResult[]) => {
     <div class="govuk-width-container">
         <ul class="app-navigation__list landing-navigation__list app-width-container float-start">
             <li class="app-navigation__list-item">
-                <a class="govuk-link govuk-link--no-visited-state govuk-link--no-underline app-navigation__link js-app-navigation__link" href="https://datamarketplace.gov.uk/">
+                <a class="govuk-link govuk-link--no-visited-state govuk-link--no-underline app-navigation__link js-app-navigation__link" href="https://github.com/chrisns/proto-data-market-aggregator/">
                     Home
                 </a>
             </li>
