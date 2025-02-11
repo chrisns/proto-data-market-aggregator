@@ -318,46 +318,51 @@ async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
 	}));
 }
 
-async function fetchDataAgrimetrics(searchParam: string): Promise<ListingResult[]> {
-	const baseUrl = "https://app.agrimetrics.co.uk/backend/catalog/api/catalog/data-sets";
-	const params = new URLSearchParams({
-		exchange: "agrimetrics",
-		tagRelationship: "narrower",
-		extendedText: searchParam,
-		onlyFeatured: "false",
-		onlyOwned: "false",
-		showHidden: "false",
-		showEditable: "false",
-		identities: "PUBLIC",
-		offset: "0",
-		limit: "13",
-		sort: "relevance"
-	});
+async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
+	try {
+		const baseUrl = "https://app.agrimetrics.co.uk/backend/catalog/api/catalog/data-sets";
+		const params = new URLSearchParams({
+			exchange: "agrimetrics",
+			tagRelationship: "narrower",
+			extendedText: query,
+			onlyFeatured: "false",
+			onlyOwned: "false",
+			showHidden: "false",
+			showEditable: "false",
+			identities: "PUBLIC",
+			offset: "0",
+			limit: "13",
+			sort: "relevance"
+		});
 
-	const response = await fetch(`${baseUrl}?${params.toString()}`);
-	const data = await response.json() as AgrimetricsSearchResponse;
+		const response = await fetch(`${baseUrl}?${params.toString()}`);
+		const data = await response.json() as AgrimetricsSearchResponse;
 
-	return data.dataSets.map((item: AgrimetricsDataSet) => ({
-		id: item.id,
-		title: item.title,
-		description: item.description,
-		subtitle: item.tags?.join(", ") || "",
-		provider: {
-			title: item.creator,
-			description: "Agrimetrics Data Marketplace",
-		},
-		url: item.distributions?.[0]?.accessURL ||
-			item.distributions?.[0]?.downloadURL ||
-			`https://app.agrimetrics.co.uk/catalog/datasets/${item.id}`,
-		source: "Agrimetrics",
-		updated: new Date(item.modified).toLocaleString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit',
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric',
-		}).replace(',', '')
-	}));
+		return data.dataSets.map((item: AgrimetricsDataSet) => ({
+			id: item.id,
+			title: item.title,
+			description: item.description,
+			subtitle: item.tags?.join(", ") || "",
+			provider: {
+				title: item.creator,
+				description: "Agrimetrics Data Marketplace",
+			},
+			url: item.distributions?.[0]?.accessURL ||
+				item.distributions?.[0]?.downloadURL ||
+				`https://app.agrimetrics.co.uk/datasets/${item.id}`,
+			source: "Agrimetrics",
+			updated: new Date(item.modified).toLocaleString('en-GB', {
+				hour: '2-digit',
+				minute: '2-digit',
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric',
+			}).replace(',', '')
+		}));
+	} catch (error) {
+		console.error("Error fetching Agrimetrics data:", error);
+		return [];
+	}
 }
 
 router.all("*", () => new Response("404, not found!", { status: 404 }))

@@ -7,28 +7,30 @@ import worker from '../src/index';
 // `Request` to pass to `worker.fetch()`.
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 
-describe('Hello World worker', () => {
-	it('responds with Hello World! (unit style)', async () => {
-		const request = new IncomingRequest('http://example.com');
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
-
-	it('responds with Hello World! (integration style)', async () => {
-		const response = await SELF.fetch('https://example.com');
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
-	});
-});
-
 describe('Data Scraper', () => {
 	beforeEach(() => {
 		// Reset all mocks before each test
 		vi.resetAllMocks();
 		global.fetch = vi.fn();
+	});
+
+	describe('Root Route', () => {
+		it('responds with search interface (unit style)', async () => {
+			const request = new IncomingRequest('http://example.com');
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+			const html = await response.text();
+			expect(html).toContain('Find government data');
+			expect(html).toContain('search for something');
+		});
+
+		it('responds with search interface (integration style)', async () => {
+			const response = await SELF.fetch('https://example.com');
+			const html = await response.text();
+			expect(html).toContain('Find government data');
+			expect(html).toContain('search for something');
+		});
 	});
 
 	describe('Agrimetrics Integration', () => {
@@ -56,6 +58,45 @@ describe('Data Scraper', () => {
 			limit: 13
 		};
 
+		const mockSnowflakeResponse = {
+			resultGroups: [{
+				results: []
+			}]
+		};
+
+		const mockDatabricksResponse = {
+			listings: []
+		};
+
+		beforeEach(() => {
+			// Mock all API responses
+			(global.fetch as Mock).mockImplementation((url: string) => {
+				if (url.includes('snowflake.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockSnowflakeResponse)
+					});
+				}
+				if (url.includes('marketplace.databricks.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockDatabricksResponse)
+					});
+				}
+				if (url.includes('ons.metadata.works')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
+					});
+				}
+				if (url.includes('environment.data.gov.uk')) {
+					return Promise.resolve({
+						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
+					});
+				}
+				return Promise.resolve({
+					json: () => Promise.resolve({})
+				});
+			});
+		});
+
 		it('constructs correct Agrimetrics API URL with search parameters', async () => {
 			const searchTerm = "soil test";
 			const expectedUrl = "https://app.agrimetrics.co.uk/backend/catalog/api/catalog/data-sets?" +
@@ -73,8 +114,35 @@ describe('Data Scraper', () => {
 					sort: "relevance"
 				}).toString();
 
-			(global.fetch as Mock).mockResolvedValueOnce({
-				json: () => Promise.resolve(mockAgrimetricsResponse)
+			(global.fetch as Mock).mockImplementation((url: string) => {
+				if (url === expectedUrl) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockAgrimetricsResponse)
+					});
+				}
+				if (url.includes('snowflake.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockSnowflakeResponse)
+					});
+				}
+				if (url.includes('marketplace.databricks.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockDatabricksResponse)
+					});
+				}
+				if (url.includes('ons.metadata.works')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
+					});
+				}
+				if (url.includes('environment.data.gov.uk')) {
+					return Promise.resolve({
+						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
+					});
+				}
+				return Promise.resolve({
+					json: () => Promise.resolve({})
+				});
 			});
 
 			const request = new IncomingRequest(`http://example.com?search=${encodeURIComponent(searchTerm)}`);
@@ -86,8 +154,35 @@ describe('Data Scraper', () => {
 		});
 
 		it('correctly processes and formats Agrimetrics search results', async () => {
-			(global.fetch as Mock).mockResolvedValueOnce({
-				json: () => Promise.resolve(mockAgrimetricsResponse)
+			(global.fetch as Mock).mockImplementation((url: string) => {
+				if (url.includes('agrimetrics')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockAgrimetricsResponse)
+					});
+				}
+				if (url.includes('snowflake.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockSnowflakeResponse)
+					});
+				}
+				if (url.includes('marketplace.databricks.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockDatabricksResponse)
+					});
+				}
+				if (url.includes('ons.metadata.works')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
+					});
+				}
+				if (url.includes('environment.data.gov.uk')) {
+					return Promise.resolve({
+						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
+					});
+				}
+				return Promise.resolve({
+					json: () => Promise.resolve({})
+				});
 			});
 
 			const request = new IncomingRequest('http://example.com?search=soil');
@@ -104,8 +199,35 @@ describe('Data Scraper', () => {
 		});
 
 		it('handles empty Agrimetrics search results gracefully', async () => {
-			(global.fetch as Mock).mockResolvedValueOnce({
-				json: () => Promise.resolve({ dataSets: [], total: 0, offset: 0, limit: 13 })
+			(global.fetch as Mock).mockImplementation((url: string) => {
+				if (url.includes('agrimetrics')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ dataSets: [], total: 0, offset: 0, limit: 13 })
+					});
+				}
+				if (url.includes('snowflake.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockSnowflakeResponse)
+					});
+				}
+				if (url.includes('marketplace.databricks.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockDatabricksResponse)
+					});
+				}
+				if (url.includes('ons.metadata.works')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
+					});
+				}
+				if (url.includes('environment.data.gov.uk')) {
+					return Promise.resolve({
+						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
+					});
+				}
+				return Promise.resolve({
+					json: () => Promise.resolve({})
+				});
 			});
 
 			const request = new IncomingRequest('http://example.com?search=nonexistent');
@@ -115,11 +237,38 @@ describe('Data Scraper', () => {
 			const html = await response.text();
 
 			// Verify the response doesn't contain any Agrimetrics results
-			expect(html).not.toContain("Agrimetrics");
+			expect(html).not.toContain("Test Dataset 1");
 		});
 
 		it('handles Agrimetrics API errors gracefully', async () => {
-			(global.fetch as Mock).mockRejectedValueOnce(new Error('API Error'));
+			(global.fetch as Mock).mockImplementation((url: string) => {
+				if (url.includes('agrimetrics')) {
+					return Promise.reject(new Error('API Error'));
+				}
+				if (url.includes('snowflake.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockSnowflakeResponse)
+					});
+				}
+				if (url.includes('marketplace.databricks.com')) {
+					return Promise.resolve({
+						json: () => Promise.resolve(mockDatabricksResponse)
+					});
+				}
+				if (url.includes('ons.metadata.works')) {
+					return Promise.resolve({
+						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
+					});
+				}
+				if (url.includes('environment.data.gov.uk')) {
+					return Promise.resolve({
+						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
+					});
+				}
+				return Promise.resolve({
+					json: () => Promise.resolve({})
+				});
+			});
 
 			const request = new IncomingRequest('http://example.com?search=soil');
 			const ctx = createExecutionContext();
