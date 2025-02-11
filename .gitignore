@@ -132,7 +132,6 @@ dist
 # vuepress v2.x temp and cache directory
 
 .temp
-.cache
 
 # Docusaurus cache and generated files
 
@@ -172,3 +171,5 @@ dist
 .wrangler/
 
 .scratchpad.md
+out.gz
+/.cache_ggshield
