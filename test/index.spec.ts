@@ -166,30 +166,42 @@ describe('Data Scraper', () => {
 			(global.fetch as Mock).mockImplementation((url: string) => {
 				if (url.includes('agrimetrics')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve(mockAgrimetricsResponse)
 					});
 				}
 				if (url.includes('snowflake.com')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve(mockSnowflakeResponse)
 					});
 				}
 				if (url.includes('marketplace.databricks.com')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve(mockDatabricksResponse)
 					});
 				}
 				if (url.includes('ons.metadata.works')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
 					});
 				}
 				if (url.includes('environment.data.gov.uk')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'text/html' }),
 						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
 					});
 				}
 				return Promise.resolve({
+					ok: true,
+					headers: new Headers({ 'content-type': 'application/json' }),
 					json: () => Promise.resolve({})
 				});
 			});
@@ -211,30 +223,42 @@ describe('Data Scraper', () => {
 			(global.fetch as Mock).mockImplementation((url: string) => {
 				if (url.includes('agrimetrics')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve({ dataSets: [], total: 0, offset: 0, limit: 13 })
 					});
 				}
 				if (url.includes('snowflake.com')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve(mockSnowflakeResponse)
 					});
 				}
 				if (url.includes('marketplace.databricks.com')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve(mockDatabricksResponse)
 					});
 				}
 				if (url.includes('ons.metadata.works')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'application/json' }),
 						json: () => Promise.resolve({ pageProps: { searchResult: { content: [] } } })
 					});
 				}
 				if (url.includes('environment.data.gov.uk')) {
 					return Promise.resolve({
+						ok: true,
+						headers: new Headers({ 'content-type': 'text/html' }),
 						text: () => Promise.resolve('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"datasets":[]}}}</script>')
 					});
 				}
 				return Promise.resolve({
+					ok: true,
+					headers: new Headers({ 'content-type': 'application/json' }),
 					json: () => Promise.resolve({})
 				});
 			});
