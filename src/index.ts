@@ -336,6 +336,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataSSEN(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "SSEN",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "SSEN",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -624,6 +646,56 @@ interface LondonDatastoreResponse {
 	result: {
 		count: number;
 		result: LondonDatastoreDataset[];
+	};
+}
+
+interface SSENTag {
+	display_name: string;
+	id: string;
+	name: string;
+	state: string;
+	vocabulary_id: string | null;
+}
+
+interface SSENResource {
+	id: string;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	created: string;
+	last_modified: string;
+	size: number | null;
+}
+
+interface SSENOrganization {
+	id: string;
+	name: string;
+	title: string;
+	description: string;
+	type: string;
+	image_url: string;
+}
+
+interface SSENDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	metadata_modified: string;
+	organization: SSENOrganization;
+	author: string;
+	license_title: string;
+	tags: SSENTag[];
+	resources: SSENResource[];
+	url: string;
+}
+
+interface SSENResponse {
+	success: boolean;
+	result: {
+		count: number;
+		results: SSENDataset[];
 	};
 }
 
@@ -1335,6 +1407,54 @@ export async function fetchDataLondonDatastore(searchParam: string): Promise<Lis
 		});
 	} catch (error) {
 		console.error('Error fetching from London Datastore:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataSSEN(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://ckan-prod.sse.datopian.com/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `ssen-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`SSEN API returned ${response.status}`);
+		}
+
+		const data = await response.json() as SSENResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from SSEN API');
+		}
+
+		return data.result.results.map(dataset => {
+			const tags = dataset.tags?.map(tag => tag.display_name || tag.name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes || '',
+				subtitle: tags.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.author || 'SSEN Distribution',
+					description: dataset.organization?.description || 'Scottish and Southern Electricity Networks Distribution'
+				},
+				url: dataset.url || dataset.resources?.[0]?.url || `https://ckan-prod.sse.datopian.com/dataset/${dataset.name}`,
+				source: 'SSEN',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from SSEN:', error);
 		throw error;
 	}
 }

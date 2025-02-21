@@ -174,6 +174,26 @@ The Open Data Northern Ireland integration provides access to datasets from the 
 - Robust error handling and UTF-8 encoding support
 - Parallel execution with other data sources
 
+### SSEN Distribution
+
+The SSEN (Scottish and Southern Electricity Networks) Distribution integration provides access to electricity network data. Features include:
+
+- Direct integration with SSEN's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - Author details
+  - Tags and categories
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all SSEN datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://ckan-prod.sse.datopian.com/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
 ### London Datastore
 
 The London Datastore integration provides access to datasets from the Greater London Authority. Features include:
