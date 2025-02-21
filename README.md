@@ -233,6 +233,35 @@ The York Open Data integration provides access to datasets from the City of York
 - Query Parameters:
   - `q`: The search query
 
+### Health Data Gateway
+
+The Health Data Gateway integration provides access to health-related datasets from various UK health organizations. Features include:
+
+- Direct integration with Health Data Gateway's search API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Publisher information
+  - Dataset type and subtype
+  - Keywords and categories
+  - Contact information
+  - Population size data
+- Supports full-text search across all Health Data Gateway datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://api.healthdatagateway.org/api/v1/search/datasets`
+- Query Parameters:
+  - `view_type`: mini
+  - `perPage`: 25
+  - `page`: 1
+  - `sort`: score:desc
+- POST request with JSON payload:
+  ```json
+  {
+    "query": "search_term"
+  }
+  ```
+
 ## API Integration Details
 
 ### Response Format

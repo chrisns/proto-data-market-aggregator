@@ -380,6 +380,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataHealthDataGateway(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Health Data Gateway",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Health Data Gateway",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -777,6 +799,33 @@ interface YorkOpenDataResponse {
 		count: number;
 		results: YorkOpenDataDataset[];
 	};
+}
+
+interface HealthDataGatewayMetadata {
+	summary: {
+		title: string;
+		abstract: string;
+		description: string;
+		keywords: string;
+		publisher: {
+			name: string;
+			gatewayId: number;
+		};
+		shortTitle: string;
+		datasetType: string;
+		contactPoint: string;
+		datasetSubType: string;
+		populationSize: number;
+	};
+}
+
+interface HealthDataGatewayDataset {
+	_id: string;
+	metadata: HealthDataGatewayMetadata;
+}
+
+interface HealthDataGatewayResponse {
+	data: HealthDataGatewayDataset[];
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -1583,6 +1632,58 @@ export async function fetchDataYorkOpenData(searchParam: string): Promise<Listin
 		});
 	} catch (error) {
 		console.error('Error fetching from York Open Data:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataHealthDataGateway(searchParam: string): Promise<ListingResult[]> {
+	const url = 'https://api.healthdatagateway.org/api/v1/search/datasets?view_type=mini&perPage=25&page=1&sort=score:desc';
+
+	try {
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				query: searchParam
+			}),
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `health-data-gateway-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Health Data Gateway API returned ${response.status}`);
+		}
+
+		const data = await response.json() as HealthDataGatewayResponse;
+
+		if (!Array.isArray(data.data)) {
+			throw new Error('Invalid response format from Health Data Gateway API');
+		}
+
+		return data.data.map(dataset => {
+			const keywords = dataset.metadata.summary.keywords?.split(';,;').filter(Boolean) || [];
+			return {
+				id: dataset._id,
+				title: dataset.metadata.summary.title,
+				description: dataset.metadata.summary.description || dataset.metadata.summary.abstract || '',
+				subtitle: keywords.join(", "),
+				provider: {
+					title: dataset.metadata.summary.publisher?.name || 'Health Data Gateway',
+					description: `${dataset.metadata.summary.datasetType} - Health Data Gateway`
+				},
+				url: `https://healthdatagateway.org/dataset/${dataset._id}`,
+				source: 'Health Data Gateway',
+				updated: 'unknown' // API doesn't provide update time
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from Health Data Gateway:', error);
 		throw error;
 	}
 }
