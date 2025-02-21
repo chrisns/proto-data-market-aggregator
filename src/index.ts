@@ -1,4 +1,5 @@
 import { Router } from 'itty-router'
+import * as cheerio from 'cheerio'
 
 import template from "./template"
 
@@ -24,7 +25,7 @@ router.get("/", async ({ query }) => {
 	}
 
 	const startTime = Date.now();
-	const [snowflake, databricks, ons, defra, agrimetrics] = await Promise.all([
+	const [snowflake, databricks, ons, defra, agrimetrics, datarade] = await Promise.all([
 		fetchDataSnowflake(searchTerm).then(results => {
 			const duration = Date.now() - startTime;
 			stats.push({ source: "Snowflake", durationMs: duration, resultCount: results.length });
@@ -69,6 +70,15 @@ router.get("/", async ({ query }) => {
 			const duration = Date.now() - startTime;
 			stats.push({ source: "Agrimetrics", durationMs: duration, error: error.message, resultCount: 0 });
 			return [];
+		}),
+		fetchDataDatarade(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Datarade", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Datarade", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
 		})
 	]);
 
@@ -78,7 +88,8 @@ router.get("/", async ({ query }) => {
 		databricks.length,
 		ons.length,
 		defra.length,
-		agrimetrics.length
+		agrimetrics.length,
+		datarade.length
 	);
 	const interweavedResults = [];
 
@@ -97,6 +108,9 @@ router.get("/", async ({ query }) => {
 		}
 		if (agrimetrics[i]) {
 			interweavedResults.push(agrimetrics[i]);
+		}
+		if (datarade[i]) {
+			interweavedResults.push(datarade[i]);
 		}
 	}
 
@@ -563,6 +577,64 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 		console.error('Error fetching Agrimetrics data:', error);
 		throw error;
 	}
+}
+
+async function fetchDataDatarade(searchParam: string): Promise<ListingResult[]> {
+	const response = await fetch(`https://datarade.ai/search/products?keywords=${encodeURIComponent(searchParam)}`, {
+		cf: {
+			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+			cacheEverything: true,
+			cacheKey: `datarade-${searchParam}`
+		}, headers: {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			'Accept-Encoding': "br, gzip"
+		}
+	});
+
+	if (!response.ok) {
+		throw new Error(`Datarade API error: Status ${response.status}`);
+	}
+
+	const html = await response.text();
+	const $ = cheerio.load(html);
+	const products: Array<{
+		title: string;
+		subtitle: string;
+		link: string;
+		body: string;
+	}> = [];
+
+	// Parse each product card
+	$('a.product-card').each((_, element) => {
+		const $element = $(element);
+		const title = $element.find('h3.product-card__title').text().trim();
+		const subtitle = $element.find('span.product-card__subtitle__author').text().trim();
+		const link = new URL($element.attr('href') || '', 'https://datarade.ai').toString();
+		const body = $element.find('div.product-card__body').text().trim();
+
+		if (title) { // Only add if we at least have a title
+			products.push({
+				title,
+				subtitle,
+				link,
+				body
+			});
+		}
+	});
+
+	return products.map(product => ({
+		id: product.link,  // Using the link as ID since Datarade doesn't provide a separate ID
+		title: product.title,
+		description: product.body,
+		subtitle: product.subtitle,
+		provider: {
+			title: product.subtitle,  // Using subtitle as provider title since it contains the author/company
+			description: ''  // Datarade doesn't provide provider description
+		},
+		url: product.link,
+		source: 'Datarade',
+		updated: "unknown"  // Datarade doesn't provide update time
+	}));
 }
 
 router.all("*", () => new Response("404, not found!", { status: 404 }))
