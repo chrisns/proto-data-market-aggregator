@@ -248,6 +248,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataOpenDataSoft(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "OpenDataSoft",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "OpenDataSoft",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -472,6 +494,26 @@ interface DataGovUKResponse {
 		count: number;
 		results: DataGovUKDataset[];
 	};
+}
+
+interface OpenDataSoftDataset {
+	dataset_id: string;
+	dataset_uid: string;
+	metas: {
+		default: {
+			title: string;
+			description: string;
+			publisher: string;
+			modified: string;
+			theme?: string[];
+			keyword?: string[];
+		}
+	}
+}
+
+interface OpenDataSoftResponse {
+	total_count: number;
+	results: OpenDataSoftDataset[];
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -993,6 +1035,52 @@ export async function fetchDataGovUK(searchParam: string): Promise<ListingResult
 		}));
 	} catch (error) {
 		console.error('Error fetching from Data.gov.uk:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataOpenDataSoft(searchParam: string): Promise<ListingResult[]> {
+	try {
+		const url = `https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets?where=${encodeURIComponent(`"${searchParam}"`)}&limit=20&offset=0&lang=en&timezone=UTC&include_links=false&include_app_metas=false`;
+
+		const response = await fetch(url, {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `opendatasoft-${searchParam}`
+			}
+		});
+
+		const contentType = response.headers.get('content-type');
+		if (!response.ok || !contentType?.includes('application/json')) {
+			const error = `OpenDataSoft API error: Status ${response.status}, Content-Type: ${contentType}`;
+			console.error(error);
+			throw new Error(error);
+		}
+
+		const data = await response.json() as OpenDataSoftResponse;
+
+		if (!data?.results) {
+			const error = 'OpenDataSoft API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
+		}
+
+		return data.results.map(dataset => ({
+			id: dataset.dataset_uid,
+			title: dataset.metas.default.title,
+			description: dataset.metas.default.description || '',
+			subtitle: dataset.metas.default.theme?.join(", ") || dataset.metas.default.keyword?.join(", ") || "",
+			provider: {
+				title: dataset.metas.default.publisher || 'OpenDataSoft',
+				description: 'OpenDataSoft Data Platform'
+			},
+			url: `https://data.opendatasoft.com/explore/dataset/${dataset.dataset_id}`,
+			source: 'OpenDataSoft',
+			updated: new Date(dataset.metas.default.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching OpenDataSoft data:', error);
 		throw error;
 	}
 }
