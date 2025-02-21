@@ -4,23 +4,72 @@ import template from "./template"
 
 const router = Router()
 
+interface QueryStats {
+	source: string;
+	durationMs: number;
+	error?: string;
+	resultCount: number;
+}
+
 router.get("/", async ({ query }) => {
 	const searchTerm = query.search as string;
+	const stats: QueryStats[] = [];
 
 	if (!searchTerm) {
-		return new Response(template("search for something", []), {
+		return new Response(template("search for something", [], []), {
 			headers: {
 				"content-type": "text/html;charset=UTF-8",
 			}
 		});
 	}
 
+	const startTime = Date.now();
 	const [snowflake, databricks, ons, defra, agrimetrics] = await Promise.all([
-		fetchDataSnowflake(searchTerm),
-		fetchDataDatabricks(searchTerm),
-		fetchDataONS(searchTerm),
-		fetchDataDefra(searchTerm),
-		fetchDataAgrimetrics(searchTerm)
+		fetchDataSnowflake(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Snowflake", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Snowflake", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataDatabricks(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Databricks", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Databricks", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataONS(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "ONS", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "ONS", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataDefra(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Defra", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Defra", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataAgrimetrics(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Agrimetrics", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Agrimetrics", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		})
 	]);
 
 	// Interweave results from all sources
@@ -51,7 +100,7 @@ router.get("/", async ({ query }) => {
 		}
 	}
 
-	return new Response(template(searchTerm, interweavedResults), {
+	return new Response(template(searchTerm, interweavedResults, stats), {
 		headers: {
 			"content-type": "text/html;charset=UTF-8",
 		}
@@ -187,15 +236,17 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 
 		const contentType = response.headers.get('content-type');
 		if (!response.ok || !contentType?.includes('application/json')) {
-			console.error(`Snowflake API error: Status ${response.status}, Content-Type: ${contentType}`);
-			return [];
+			const error = `Snowflake API error: Status ${response.status}, Content-Type: ${contentType}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const data = await response.json() as SnowflakeResponse;
 
 		if (!data?.resultGroups?.[0]?.results) {
-			console.error('Snowflake API response missing expected data structure');
-			return [];
+			const error = 'Snowflake API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		return data.resultGroups[0].results
@@ -223,7 +274,7 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 			});
 	} catch (error) {
 		console.error('Error fetching Snowflake data:', error);
-		return [];
+		throw error;
 	}
 }
 
@@ -259,8 +310,9 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 
 		const contentType = response.headers.get('content-type');
 		if (!response.ok || !contentType?.includes('application/json')) {
-			console.error(`Databricks API error: Status ${response.status}, Content-Type: ${contentType}`);
-			return [];
+			const error = `Databricks API error: Status ${response.status}, Content-Type: ${contentType}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const results = await response.json() as DatabricksResponse;
@@ -315,24 +367,27 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 		});
 
 		if (!pageResponse.ok) {
-			console.error(`ONS initial page fetch error: Status ${pageResponse.status}`);
-			return [];
+			const error = `ONS initial page fetch error: Status ${pageResponse.status}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const html = await pageResponse.text();
 		const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
 
 		if (!scriptTagMatch) {
-			console.error('ONS page missing __NEXT_DATA__ script tag');
-			return [];
+			const error = 'ONS page missing __NEXT_DATA__ script tag';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const nextData = JSON.parse(scriptTagMatch[1]);
 		const buildId = nextData.buildId;
 
 		if (!buildId) {
-			console.error('ONS page missing buildId');
-			return [];
+			const error = 'ONS page missing buildId';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		// Now make the actual search request with the current buildId
@@ -346,15 +401,17 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 
 		const contentType = searchResponse.headers.get('content-type');
 		if (!searchResponse.ok || !contentType?.includes('application/json')) {
-			console.error(`ONS search API error: Status ${searchResponse.status}, Content-Type: ${contentType}`);
-			return [];
+			const error = `ONS search API error: Status ${searchResponse.status}, Content-Type: ${contentType}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const data = await searchResponse.json() as ONSSearchResponse;
 
 		if (!data?.pageProps?.searchResult?.content) {
-			console.error('ONS API response missing expected data structure');
-			return [];
+			const error = 'ONS API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		return data.pageProps.searchResult.content.map(item => ({
@@ -378,7 +435,7 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 		}));
 	} catch (error) {
 		console.error('Error fetching ONS data:', error);
-		return [];
+		throw error;
 	}
 }
 
@@ -393,8 +450,9 @@ async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
 		});
 
 		if (!response.ok) {
-			console.error(`Defra API error: Status ${response.status}`);
-			return [];
+			const error = `Defra API error: Status ${response.status}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const html = await response.text();
@@ -402,15 +460,17 @@ async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
 		// Extract the JSON data from the __NEXT_DATA__ script tag
 		const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
 		if (!scriptTagMatch) {
-			console.error('Defra API response missing expected script tag');
-			return [];
+			const error = 'Defra API response missing expected script tag';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const data = JSON.parse(scriptTagMatch[1]) as DefraSearchResponse;
 
 		if (!data?.props?.pageProps?.datasets) {
-			console.error('Defra API response missing expected data structure');
-			return [];
+			const error = 'Defra API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		return data.props.pageProps.datasets.map(item => ({
@@ -434,7 +494,7 @@ async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
 		}));
 	} catch (error) {
 		console.error('Error fetching Defra data:', error);
-		return [];
+		throw error;
 	}
 }
 
@@ -465,15 +525,17 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 
 		const contentType = response.headers.get('content-type');
 		if (!response.ok || !contentType?.includes('application/json')) {
-			console.error(`Agrimetrics API error: Status ${response.status}, Content-Type: ${contentType}`);
-			return [];
+			const error = `Agrimetrics API error: Status ${response.status}, Content-Type: ${contentType}`;
+			console.error(error);
+			throw new Error(error);
 		}
 
 		const data = await response.json() as AgrimetricsSearchResponse;
 
 		if (!data?.dataSets) {
-			console.error('Agrimetrics API response missing expected data structure');
-			return [];
+			const error = 'Agrimetrics API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
 		}
 
 		return data.dataSets.map((item: AgrimetricsDataSet) => ({
@@ -499,7 +561,7 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 		}));
 	} catch (error) {
 		console.error('Error fetching Agrimetrics data:', error);
-		return [];
+		throw error;
 	}
 }
 

@@ -1,3 +1,26 @@
+interface ListingProvider {
+    title: string,
+    description: string,
+}
+
+interface ListingResult {
+    id: string;
+    title: string;
+    description: string;
+    subtitle: string;
+    provider: ListingProvider;
+    url: string;
+    source: string;
+    updated: string;
+}
+
+interface QueryStats {
+    source: string;
+    durationMs: number;
+    error?: string;
+    resultCount: number;
+}
+
 const result_template = (results: ListingResult[]) => {
     return results.map(result => {
         return `
@@ -25,7 +48,31 @@ const result_template = (results: ListingResult[]) => {
     }).join("\n")
 }
 
-const template = (searchterm: string, results: ListingResult[]) => {
+const stats_template = (stats: QueryStats[]) => {
+    if (!stats.length) return '';
+
+    return `
+    <div class="govuk-!-margin-bottom-4">
+        <h2 class="govuk-heading-s">Query Stats:</h2>
+        <ul class="govuk-list">
+            ${stats.map(stat => `
+                <li class="govuk-!-margin-bottom-2">
+                    <div class="govuk-!-margin-bottom-1">
+                        <strong>${stat.source}</strong>: ${stat.durationMs}ms, ${stat.resultCount} results
+                    </div>
+                    ${stat.error ? `
+                        <div class="govuk-error-message">
+                            <span class="govuk-visually-hidden">Error:</span>
+                            ${stat.error}
+                        </div>
+                    ` : ''}
+                </li>
+            `).join('\n')}
+        </ul>
+    </div>`
+}
+
+const template = (searchterm: string, results: ListingResult[], stats: QueryStats[]) => {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -375,6 +422,7 @@ const template = (searchterm: string, results: ListingResult[]) => {
                         </button>
                         <a class="govuk-link" href="https://datamarketplace.gov.uk/catalogdata/getcddodataassets">Clear all</a>
                     </div>
+                    ${stats_template(stats)}
                 </div>
                 <div class="govuk-grid-column-two-thirds">
                     <h2 class="govuk-heading-s govuk-!-margin-bottom-2">${results.length} results</h2>
