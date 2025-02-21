@@ -142,6 +142,22 @@ Each data source uses a unique cache key format:
 - UTF-8 encoding support for international queries
 - Parallel execution with other data sources
 
+### NHSBSA Open Data Portal
+
+The NHS Business Services Authority (NHSBSA) Open Data Portal integration provides access to healthcare-related datasets. Features include:
+
+- Direct integration with NHSBSA's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Title and description
+  - Publisher details
+  - License information
+  - Direct links to dataset resources
+  - Last modified dates
+- Supports full-text search across all NHSBSA datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+
 ## API Integration Details
 
 ### Response Format
