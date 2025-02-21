@@ -219,7 +219,7 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
                 <div class="govuk-grid-column-two-thirds">
                     <div class="govuk-form-group mb-2 search-input">
                         <div class="govuk-input__wrapper" style="position: relative;">
-                            <input aria-label="Search data description" placeholder="${searchterm}" class="govuk-input govuk-input--width-30" id="catalogDataSearchInput" name="search" type="text" list="catalogDataSearchList" autocomplete="off">
+                            <input aria-label="Search data description" placeholder="search for something" class="govuk-input govuk-input--width-30" id="catalogDataSearchInput" name="search" type="text" list="catalogDataSearchList" autocomplete="off">
                             <button title="datasetSearchResultsBtn" class="search-button" type="submit" enterkeyhint="search">
                                 <svg class="search-button__icon" width="27" height="27" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                                     <circle cx="12.0161" cy="11.0161" r="8.51613" stroke="currentColor" stroke-width="3"></circle>

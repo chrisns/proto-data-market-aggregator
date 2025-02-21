@@ -4,7 +4,7 @@
 
 🔗 **Live Demo**: [https://proto-data-market-aggregator.chrisns.workers.dev/](https://proto-data-market-aggregator.chrisns.workers.dev/)
 
-A Cloudflare Worker that aggregates and searches across multiple data sources including Snowflake, Databricks, ONS, Defra, Agrimetrics, AWS Marketplace, and Datarade. This service provides a unified search interface for government and commercial data marketplaces.
+A Cloudflare Worker that aggregates and searches across multiple data sources including Snowflake, Databricks, ONS, Defra, Agrimetrics, AWS Marketplace, data.gov.uk, and Datarade. This service provides a unified search interface for government and commercial data marketplaces.
 
 ## Features
 
@@ -113,6 +113,19 @@ Each data source uses a unique cache key format:
 - Direct integration with AWS Marketplace Discovery API
 - Custom cache configuration for improved performance
 
+### data.gov.uk
+- Searches through the UK government's open data portal
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Direct integration with CKAN API
+- Supports advanced search parameters
+- Robust error handling with graceful degradation
+- Custom cache configuration for improved performance
+
 ## API Integration Details
 
 ### Response Format
@@ -205,6 +218,37 @@ The integration with Agrimetrics uses their catalog API with the following param
   - `offset=0`: Starting point for results
   - `limit=13`: Maximum number of results
   - `sort=relevance`: Sort by relevance
+
+### data.gov.uk API
+The integration with data.gov.uk uses their CKAN API with the following details:
+- Base URL: `https://ckan.publishing.service.gov.uk/api/action/package_search`
+- Method: GET
+- Query Parameters:
+  - `q`: The search query
+- Response Format:
+```typescript
+interface DataGovUKDataset {
+    id: string;
+    title: string;
+    notes: string;
+    metadata_modified: string;
+    organization: {
+        title: string;
+        description: string;
+    };
+    license_title: string;
+    resources: Array<{
+        url: string;
+        format: string;
+    }>;
+}
+```
+- Response Handling:
+  - Maps to common ListingResult format
+  - Extracts organization information
+  - Preserves license information
+  - Includes resource URLs
+  - Maintains update timestamps
 
 ## Usage
 
