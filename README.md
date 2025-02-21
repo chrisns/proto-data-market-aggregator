@@ -158,6 +158,22 @@ The NHS Business Services Authority (NHSBSA) Open Data Portal integration provid
 - Robust error handling and UTF-8 encoding support
 - Parallel execution with other data sources
 
+### Open Data Northern Ireland
+
+The Open Data Northern Ireland integration provides access to datasets from the Northern Ireland public sector. Features include:
+
+- Direct integration with Open Data NI's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all Open Data NI datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+
 ## API Integration Details
 
 ### Response Format

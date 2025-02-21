@@ -292,6 +292,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataOpenDataNI(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Open Data NI",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Open Data NI",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -1153,6 +1175,51 @@ export async function fetchDataNHSBSA(searchParam: string): Promise<ListingResul
 		}));
 	} catch (error) {
 		console.error('Error fetching from NHSBSA:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataOpenDataNI(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://admin.opendatani.gov.uk/api/3/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `opendatani-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Open Data NI API returned ${response.status}`);
+		}
+
+		const data = await response.json() as DataGovUKResponse; // Reusing the same interface since it's CKAN format
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from Open Data NI API');
+		}
+
+		return data.result.results.map(dataset => ({
+			id: dataset.id,
+			title: dataset.title,
+			description: dataset.notes || '',
+			subtitle: dataset.license_title || '',
+			provider: {
+				title: dataset.organization?.title || 'Open Data Northern Ireland',
+				description: dataset.organization?.description || 'Open Data Northern Ireland Portal'
+			},
+			url: dataset.resources?.[0]?.url || `https://admin.opendatani.gov.uk/dataset/${dataset.id}`,
+			source: 'Open Data NI',
+			updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching from Open Data NI:', error);
 		throw error;
 	}
 }
