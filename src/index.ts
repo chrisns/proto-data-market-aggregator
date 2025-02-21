@@ -5,133 +5,252 @@ import template from "./template"
 
 const router = Router()
 
+const DATE_FORMAT: Intl.DateTimeFormatOptions = {
+	hour: '2-digit',
+	minute: '2-digit',
+	day: '2-digit',
+	month: '2-digit',
+	year: 'numeric'
+};
+
 interface QueryStats {
 	source: string;
+	duration: number;
 	durationMs: number;
+	resultCount?: number;
 	error?: string;
-	resultCount: number;
 }
 
-router.get("/", async ({ query }) => {
-	const searchTerm = query.search as string;
-	const stats: QueryStats[] = [];
+function getCacheControlHeader(): string {
+	return 'public, max-age=1209600, stale-while-revalidate=86400'; // 2 weeks cache, 1 day stale
+}
 
-	if (!searchTerm) {
-		return new Response(template("search for something", [], []), {
-			headers: {
-				"content-type": "text/html;charset=UTF-8",
+function interweaveResults(results: ListingResult[]): ListingResult[] {
+	const sourceGroups = new Map<string, ListingResult[]>();
+
+	// Group results by source
+	for (const result of results) {
+		if (!sourceGroups.has(result.source)) {
+			sourceGroups.set(result.source, []);
+		}
+		sourceGroups.get(result.source)!.push(result);
+	}
+
+	const interwoven: ListingResult[] = [];
+	let hasMore = true;
+	let index = 0;
+
+	// Interweave results from each source
+	while (hasMore) {
+		hasMore = false;
+		for (const [_, sourceResults] of sourceGroups) {
+			if (index < sourceResults.length) {
+				interwoven.push(sourceResults[index]);
+				hasMore = true;
 			}
-		});
+		}
+		index++;
+	}
+
+	return interwoven;
+}
+
+router.get("/", async (req) => {
+	const url = new URL(req.url);
+	const searchParam = url.searchParams.get("search");
+	const queryStats: QueryStats[] = [];
+
+	if (!searchParam) {
+		return Response.redirect(`${url.origin}/index.html`, 302);
 	}
 
 	const startTime = Date.now();
-	const [snowflake, databricks, ons, defra, agrimetrics, datarade, aws] = await Promise.all([
-		fetchDataSnowflake(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Snowflake", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Snowflake", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataDatabricks(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Databricks", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Databricks", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataONS(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "ONS", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "ONS", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataDefra(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Defra", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Defra", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataAgrimetrics(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Agrimetrics", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Agrimetrics", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataDatarade(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Datarade", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "Datarade", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		}),
-		fetchDataAWSMarketplace(searchTerm).then(results => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "AWS Marketplace", durationMs: duration, resultCount: results.length });
-			return results;
-		}).catch(error => {
-			const duration = Date.now() - startTime;
-			stats.push({ source: "AWS Marketplace", durationMs: duration, error: error.message, resultCount: 0 });
-			return [];
-		})
-	]);
 
-	// Interweave results from all sources
-	const maxLength = Math.max(
-		snowflake.length,
-		databricks.length,
-		ons.length,
-		defra.length,
-		agrimetrics.length,
-		datarade.length,
-		aws.length
-	);
-	const interweavedResults = [];
+	try {
+		const results = await Promise.all([
+			fetchDataSnowflake(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Snowflake",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Snowflake",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataDatabricks(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Databricks",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Databricks",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataONS(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "ONS",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "ONS",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataDefra(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Defra",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Defra",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataAgrimetrics(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Agrimetrics",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Agrimetrics",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataAWSMarketplace(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "AWS Marketplace",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "AWS Marketplace",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataDatarade(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Datarade",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Datarade",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataGovUK(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "data.gov.uk",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "data.gov.uk",
+						duration: duration,
+						durationMs: duration,
+						error: error.message
+					});
+					return [];
+				})
+		]);
 
-	for (let i = 0; i < maxLength; i++) {
-		if (snowflake[i]) {
-			interweavedResults.push(snowflake[i]);
-		}
-		if (databricks[i]) {
-			interweavedResults.push(databricks[i]);
-		}
-		if (ons[i]) {
-			interweavedResults.push(ons[i]);
-		}
-		if (defra[i]) {
-			interweavedResults.push(defra[i]);
-		}
-		if (agrimetrics[i]) {
-			interweavedResults.push(agrimetrics[i]);
-		}
-		if (datarade[i]) {
-			interweavedResults.push(datarade[i]);
-		}
-		if (aws[i]) {
-			interweavedResults.push(aws[i]);
-		}
+		const allResults = results.flat();
+		const interwovenResults = interweaveResults(allResults);
+
+		return new Response(template(searchParam, interwovenResults, queryStats), {
+			headers: {
+				"content-type": "text/html;charset=UTF-8",
+				"Cache-Control": getCacheControlHeader()
+			},
+		});
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+		return new Response(`Error: ${errorMessage}`, { status: 500 });
 	}
-
-	return new Response(template(searchTerm, interweavedResults, stats), {
-		headers: {
-			"content-type": "text/html;charset=UTF-8",
-		}
-	});
 })
 
 interface ListingProvider {
@@ -309,6 +428,39 @@ interface AWSMarketplaceSearchResponse {
 	ListingSummaries: AWSMarketplaceListingSummary[];
 }
 
+interface DataGovUKOrganization {
+	id: string;
+	name: string;
+	title: string;
+	description: string;
+}
+
+interface DataGovUKResource {
+	id: string;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+}
+
+interface DataGovUKDataset {
+	id: string;
+	title: string;
+	notes: string;
+	metadata_modified: string;
+	organization: DataGovUKOrganization;
+	license_title: string;
+	resources: DataGovUKResource[];
+}
+
+interface DataGovUKResponse {
+	success: boolean;
+	result: {
+		count: number;
+		results: DataGovUKDataset[];
+	};
+}
+
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
 	try {
 		const response = await fetch("https://app.snowflake.com/v0/guest/snowscope/search", {
@@ -356,13 +508,7 @@ async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]>
 						description: item.typeSpecific.listing.provider.description,
 					},
 					url: item.typeSpecific.listing.url,
-					updated: new Date(item.typeSpecific.listing.lastPublished).toLocaleString('en-GB', {
-						hour: '2-digit',
-						minute: '2-digit',
-						day: '2-digit',
-						month: '2-digit',
-						year: 'numeric',
-					}).replace(',', ''),
+					updated: new Date(item.typeSpecific.listing.lastPublished).toLocaleString('en-GB', DATE_FORMAT).replace(',', ''),
 					source: "Snowflake",
 				}
 			});
@@ -428,13 +574,7 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 				},
 				url: `https://marketplace.databricks.com/details(${item.id})/listing`,
 				source: "Databricks",
-				updated: new Date(parseInt(item.summary.updated_at)).toLocaleString('en-GB', {
-					hour: '2-digit',
-					minute: '2-digit',
-					day: '2-digit',
-					month: '2-digit',
-					year: 'numeric',
-				}).replace(',', '')
+				updated: new Date(parseInt(item.summary.updated_at)).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
 			}
 		});
 
@@ -519,13 +659,7 @@ async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 			},
 			url: item.origin?.link || `https://ons.metadata.works/browser/dataset/${item.id}/0`,
 			source: "ONS",
-			updated: new Date(item.modified).toLocaleString('en-GB', {
-				hour: '2-digit',
-				minute: '2-digit',
-				day: '2-digit',
-				month: '2-digit',
-				year: 'numeric',
-			}).replace(',', '')
+			updated: new Date(item.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
 		}));
 	} catch (error) {
 		console.error('Error fetching ONS data:', error);
@@ -578,13 +712,7 @@ async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
 			},
 			url: `https://environment.data.gov.uk/dataset/${item.id}`,
 			source: "Defra",
-			updated: new Date(item.modified).toLocaleString('en-GB', {
-				hour: '2-digit',
-				minute: '2-digit',
-				day: '2-digit',
-				month: '2-digit',
-				year: 'numeric',
-			}).replace(',', '')
+			updated: new Date(item.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
 		}));
 	} catch (error) {
 		console.error('Error fetching Defra data:', error);
@@ -645,13 +773,7 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 				item.distributions?.[0]?.downloadURL ||
 				`https://app.agrimetrics.co.uk/datasets/${item.id}`,
 			source: "Agrimetrics",
-			updated: new Date(item.modified).toLocaleString('en-GB', {
-				hour: '2-digit',
-				minute: '2-digit',
-				day: '2-digit',
-				month: '2-digit',
-				year: 'numeric',
-			}).replace(',', '')
+			updated: new Date(item.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
 		}));
 	} catch (error) {
 		console.error('Error fetching Agrimetrics data:', error);
@@ -818,6 +940,46 @@ export async function fetchDataAWSMarketplace(searchParam: string): Promise<List
 		}));
 	} catch (error) {
 		console.error('Error fetching AWS Marketplace data:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataGovUK(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://ckan.publishing.service.gov.uk/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Data.gov.uk API returned ${response.status}`);
+		}
+
+		const data = await response.json() as DataGovUKResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from Data.gov.uk API');
+		}
+
+		return data.result.results.map(dataset => ({
+			id: dataset.id,
+			title: dataset.title,
+			description: dataset.notes || '',
+			subtitle: dataset.license_title || '',
+			provider: {
+				title: dataset.organization?.title || 'Unknown Organization',
+				description: dataset.organization?.description || ''
+			},
+			url: dataset.resources?.[0]?.url || '',
+			source: 'data.gov.uk',
+			updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching from Data.gov.uk:', error);
 		throw error;
 	}
 }
