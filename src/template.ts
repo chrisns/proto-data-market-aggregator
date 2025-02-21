@@ -56,9 +56,16 @@ const stats_template = (stats: QueryStats[]) => {
         <h2 class="govuk-heading-s">Query Stats:</h2>
         <ul class="govuk-list">
             ${stats.map(stat => `
-                <li>
-                    <strong>${stat.source}</strong>: ${stat.durationMs}ms, ${stat.resultCount} results
-                    ${stat.error ? `<span class="govuk-tag govuk-tag--red">Error: ${stat.error}</span>` : ''}
+                <li class="govuk-!-margin-bottom-2">
+                    <div class="govuk-!-margin-bottom-1">
+                        <strong>${stat.source}</strong>: ${stat.durationMs}ms, ${stat.resultCount} results
+                    </div>
+                    ${stat.error ? `
+                        <div class="govuk-error-message">
+                            <span class="govuk-visually-hidden">Error:</span>
+                            ${stat.error}
+                        </div>
+                    ` : ''}
                 </li>
             `).join('\n')}
         </ul>
