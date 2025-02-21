@@ -25,7 +25,7 @@ router.get("/", async ({ query }) => {
 	}
 
 	const startTime = Date.now();
-	const [snowflake, databricks, ons, defra, agrimetrics, datarade] = await Promise.all([
+	const [snowflake, databricks, ons, defra, agrimetrics, datarade, aws] = await Promise.all([
 		fetchDataSnowflake(searchTerm).then(results => {
 			const duration = Date.now() - startTime;
 			stats.push({ source: "Snowflake", durationMs: duration, resultCount: results.length });
@@ -79,6 +79,15 @@ router.get("/", async ({ query }) => {
 			const duration = Date.now() - startTime;
 			stats.push({ source: "Datarade", durationMs: duration, error: error.message, resultCount: 0 });
 			return [];
+		}),
+		fetchDataAWSMarketplace(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "AWS Marketplace", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "AWS Marketplace", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
 		})
 	]);
 
@@ -89,7 +98,8 @@ router.get("/", async ({ query }) => {
 		ons.length,
 		defra.length,
 		agrimetrics.length,
-		datarade.length
+		datarade.length,
+		aws.length
 	);
 	const interweavedResults = [];
 
@@ -111,6 +121,9 @@ router.get("/", async ({ query }) => {
 		}
 		if (datarade[i]) {
 			interweavedResults.push(datarade[i]);
+		}
+		if (aws[i]) {
+			interweavedResults.push(aws[i]);
 		}
 	}
 
@@ -227,6 +240,73 @@ interface SnowflakeResponse {
 	resultGroups: Array<{
 		results: SnowflakeListing[];
 	}>;
+}
+
+interface AWSMarketplaceBadge {
+	DisplayName: string;
+	Value: string;
+}
+
+interface AWSMarketplaceCategory {
+	DisplayName: string;
+	Value: string;
+}
+
+interface AWSMarketplaceDisplayAttributes {
+	LongDescription: string;
+	ShortDescription: string;
+	Title: string;
+}
+
+interface AWSMarketplaceFulfillmentOption {
+	DisplayName: string;
+	Value: string;
+}
+
+interface AWSMarketplaceMedia {
+	DefaultDomain: string;
+	Path: string;
+}
+
+interface AWSMarketplacePricingModel {
+	DisplayName: string;
+	Value: string;
+}
+
+interface AWSMarketplaceOfferSummary {
+	PricingModels: AWSMarketplacePricingModel[];
+	PricingSummary: string;
+	PricingUnits: any[];
+	Vendors: any[];
+}
+
+interface AWSMarketplaceCreator {
+	DisplayName: string;
+	Value: string;
+}
+
+interface AWSMarketplaceProductAttributes {
+	BaseProductId: string;
+	Creator: AWSMarketplaceCreator;
+}
+
+interface AWSMarketplaceListingSummary {
+	Badges: AWSMarketplaceBadge[];
+	Categories: AWSMarketplaceCategory[];
+	DisplayAttributes: AWSMarketplaceDisplayAttributes;
+	FulfillmentOptionTypes: AWSMarketplaceFulfillmentOption[];
+	Id: string;
+	Media: {
+		LISTING_LOGO_THUMBNAIL?: AWSMarketplaceMedia;
+		LOGO_THUMBNAIL?: AWSMarketplaceMedia;
+	};
+	OfferSummary: AWSMarketplaceOfferSummary;
+	ProductAttributes: AWSMarketplaceProductAttributes;
+	Reviews: any;
+}
+
+interface AWSMarketplaceSearchResponse {
+	ListingSummaries: AWSMarketplaceListingSummary[];
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -635,6 +715,111 @@ async function fetchDataDatarade(searchParam: string): Promise<ListingResult[]> 
 		source: 'Datarade',
 		updated: "unknown"  // Datarade doesn't provide update time
 	}));
+}
+
+export async function fetchDataAWSMarketplace(searchParam: string): Promise<ListingResult[]> {
+	try {
+		const response = await fetch("https://aws.amazon.com/marketplace/api/awsmpdiscovery", {
+			method: "POST",
+			headers: {
+				"Accept": "application/json",
+				"Accept-Encoding": "deflate, gzip",
+				"Content-Type": "application/x-amz-json-1.1",
+				"X-Amz-Target": "AWSMPDiscoveryService.SearchListings"
+			},
+			body: JSON.stringify({
+				region: "us-east-1",
+				headers: {
+					"Accept": "application/json",
+					"Accept-Encoding": "deflate, gzip",
+					"Content-Type": "application/x-amz-json-1.1",
+					"X-Amz-Target": "AWSMPDiscoveryService.SearchListings"
+				},
+				contentString: JSON.stringify({
+					SearchText: searchParam,
+					MaxResults: 20,
+					Filters: [{
+						Type: "FULFILLMENT_OPTION_TYPE",
+						Values: ["DATA_EXCHANGE"]
+					}],
+					Sort: {
+						SortBy: "RELEVANT",
+						SortOrder: "DESCENDING"
+					},
+					RequestContext: {
+						IntegrationId: "integ-wgprxonvth2vk"
+					}
+				}),
+				method: "POST",
+				operation: "SearchListings",
+				path: "/"
+			}),
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `aws-marketplace-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			const error = `AWS Marketplace API error: Status ${response.status}`;
+			console.error(error);
+			throw new Error(error);
+		}
+
+		// Get the compressed response
+		const compressedData = await response.arrayBuffer();
+
+		// Create a DecompressionStream for zlib
+		const ds = new DecompressionStream('deflate');
+
+		// Create a stream from the compressed data and pipe it through the DecompressionStream
+		const decompressedStream = new Response(
+			new Blob([compressedData]).stream().pipeThrough(ds)
+		).body;
+
+		if (!decompressedStream) {
+			throw new Error('Failed to create decompression stream');
+		}
+
+		// Convert the stream to text
+		const reader = decompressedStream.getReader();
+		const decoder = new TextDecoder();
+		let decompressed = '';
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			decompressed += decoder.decode(value, { stream: true });
+		}
+		decompressed += decoder.decode(); // Flush the decoder
+
+		// Parse the decompressed JSON
+		const data = JSON.parse(decompressed) as AWSMarketplaceSearchResponse;
+
+		if (!data?.ListingSummaries) {
+			const error = 'AWS Marketplace API response missing expected data structure';
+			console.error(error);
+			throw new Error(error);
+		}
+
+		return data.ListingSummaries.map(item => ({
+			id: item.Id,
+			title: item.DisplayAttributes.Title,
+			description: item.DisplayAttributes.LongDescription,
+			subtitle: item.Categories.map(cat => cat.DisplayName).join(", "),
+			provider: {
+				title: item.ProductAttributes.Creator.DisplayName,
+				description: item.OfferSummary.PricingSummary
+			},
+			url: `https://aws.amazon.com/marketplace/pp/${item.Id}?sr=0-1&ref_=beagle&applicationId=AWSMPContessa`,
+			source: "AWS Marketplace",
+			updated: "unknown"  // AWS doesn't provide update time
+		}));
+	} catch (error) {
+		console.error('Error fetching AWS Marketplace data:', error);
+		throw error;
+	}
 }
 
 router.all("*", () => new Response("404, not found!", { status: 404 }))

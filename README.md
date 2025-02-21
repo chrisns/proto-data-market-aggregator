@@ -4,7 +4,7 @@
 
 🔗 **Live Demo**: [https://proto-data-market-aggregator.chrisns.workers.dev/](https://proto-data-market-aggregator.chrisns.workers.dev/)
 
-A Cloudflare Worker that aggregates and searches across multiple data sources including Snowflake, Databricks, ONS, Defra, and Agrimetrics. This service provides a unified search interface for government and commercial data marketplaces.
+A Cloudflare Worker that aggregates and searches across multiple data sources including Snowflake, Databricks, ONS, Defra, Agrimetrics, AWS Marketplace, and Datarade. This service provides a unified search interface for government and commercial data marketplaces.
 
 ## Features
 
@@ -99,6 +99,20 @@ Each data source uses a unique cache key format:
 - Input validation and URL encoding
 - Direct integration with Datarade's search interface
 
+### AWS Marketplace
+- Searches through AWS Data Exchange listings
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Categories and badges
+  - Creator information
+  - Pricing details
+  - Direct links to AWS Marketplace listings
+- Supports advanced filtering for Data Exchange products
+- Handles zlib-compressed responses
+- Robust error handling with graceful degradation
+- Direct integration with AWS Marketplace Discovery API
+- Custom cache configuration for improved performance
+
 ## API Integration Details
 
 ### Response Format
@@ -118,6 +132,48 @@ interface ListingResult {
     updated: string;
 }
 ```
+
+### AWS Marketplace API
+The integration with AWS Marketplace uses their Discovery API with the following details:
+- Base URL: `https://aws.amazon.com/marketplace/api/awsmpdiscovery`
+- Method: POST
+- Headers:
+  - `Accept`: application/json
+  - `Accept-Encoding`: deflate, gzip
+  - `Content-Type`: application/x-amz-json-1.1
+  - `X-Amz-Target`: AWSMPDiscoveryService.SearchListings
+- Request Body:
+  - `SearchText`: The search query
+  - `MaxResults`: 20 (configurable)
+  - `Filters`: Configured for DATA_EXCHANGE products
+  - `Sort`: By relevance, descending order
+- Response Format:
+```typescript
+interface AWSMarketplaceListingSummary {
+    Id: string;
+    DisplayAttributes: {
+        Title: string;
+        LongDescription: string;
+    };
+    Categories: Array<{
+        DisplayName: string;
+    }>;
+    ProductAttributes: {
+        Creator: {
+            DisplayName: string;
+        };
+    };
+    OfferSummary: {
+        PricingSummary: string;
+    };
+}
+```
+- Response Handling:
+  - Handles zlib-compressed responses
+  - Decompresses using Web Streams API
+  - Maps to common ListingResult format
+  - Includes pricing information
+  - Preserves category information
 
 ### Datarade API
 The integration with Datarade uses their search interface with the following details:
