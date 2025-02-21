@@ -1066,19 +1066,24 @@ export async function fetchDataOpenDataSoft(searchParam: string): Promise<Listin
 			throw new Error(error);
 		}
 
-		return data.results.map(dataset => ({
-			id: dataset.dataset_uid,
-			title: dataset.metas.default.title,
-			description: dataset.metas.default.description || '',
-			subtitle: dataset.metas.default.theme?.join(", ") || dataset.metas.default.keyword?.join(", ") || "",
-			provider: {
-				title: dataset.metas.default.publisher || 'OpenDataSoft',
-				description: 'OpenDataSoft Data Platform'
-			},
-			url: `https://data.opendatasoft.com/explore/dataset/${dataset.dataset_id}`,
-			source: 'OpenDataSoft',
-			updated: new Date(dataset.metas.default.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
-		}));
+		return data.results.map(dataset => {
+			const themes = dataset.metas.default.theme || [];
+			const keywords = dataset.metas.default.keyword || [];
+			const subtitleParts = [...themes, ...keywords];
+			return {
+				id: dataset.dataset_uid,
+				title: dataset.metas.default.title,
+				description: dataset.metas.default.description || '',
+				subtitle: subtitleParts.join(", "),
+				provider: {
+					title: dataset.metas.default.publisher || 'OpenDataSoft',
+					description: 'OpenDataSoft Data Platform'
+				},
+				url: `https://data.opendatasoft.com/explore/dataset/${dataset.dataset_id}`,
+				source: 'OpenDataSoft',
+				updated: new Date(dataset.metas.default.modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
 	} catch (error) {
 		console.error('Error fetching OpenDataSoft data:', error);
 		throw error;

@@ -126,6 +126,22 @@ Each data source uses a unique cache key format:
 - Robust error handling with graceful degradation
 - Custom cache configuration for improved performance
 
+### OpenDataSoft
+- Searches through OpenDataSoft's data platform
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Publisher information
+  - Themes and keywords
+  - Last modified dates
+  - Direct links to dataset pages
+- Direct integration with OpenDataSoft Explore API v2.1
+- Supports advanced search parameters
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling with graceful degradation
+- Custom cache configuration for improved performance
+- UTF-8 encoding support for international queries
+- Parallel execution with other data sources
+
 ## API Integration Details
 
 ### Response Format
