@@ -1,3 +1,26 @@
+interface ListingProvider {
+    title: string,
+    description: string,
+}
+
+interface ListingResult {
+    id: string;
+    title: string;
+    description: string;
+    subtitle: string;
+    provider: ListingProvider;
+    url: string;
+    source: string;
+    updated: string;
+}
+
+interface QueryStats {
+    source: string;
+    durationMs: number;
+    error?: string;
+    resultCount: number;
+}
+
 const result_template = (results: ListingResult[]) => {
     return results.map(result => {
         return `
@@ -25,7 +48,24 @@ const result_template = (results: ListingResult[]) => {
     }).join("\n")
 }
 
-const template = (searchterm: string, results: ListingResult[]) => {
+const stats_template = (stats: QueryStats[]) => {
+    if (!stats.length) return '';
+
+    return `
+    <div class="govuk-!-margin-bottom-4">
+        <h2 class="govuk-heading-s">Query Stats:</h2>
+        <ul class="govuk-list">
+            ${stats.map(stat => `
+                <li>
+                    <strong>${stat.source}</strong>: ${stat.durationMs}ms, ${stat.resultCount} results
+                    ${stat.error ? `<span class="govuk-tag govuk-tag--red">Error: ${stat.error}</span>` : ''}
+                </li>
+            `).join('\n')}
+        </ul>
+    </div>`
+}
+
+const template = (searchterm: string, results: ListingResult[], stats: QueryStats[]) => {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -167,6 +207,7 @@ const template = (searchterm: string, results: ListingResult[]) => {
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-4">
             Find government data
         </h1>
+        ${stats_template(stats)}
         <form method="get" action="/" novalidate="">
             <div class="govuk-grid-row mb-5">
                 <div class="govuk-grid-column-two-thirds">

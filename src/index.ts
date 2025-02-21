@@ -4,23 +4,72 @@ import template from "./template"
 
 const router = Router()
 
+interface QueryStats {
+	source: string;
+	durationMs: number;
+	error?: string;
+	resultCount: number;
+}
+
 router.get("/", async ({ query }) => {
 	const searchTerm = query.search as string;
+	const stats: QueryStats[] = [];
 
 	if (!searchTerm) {
-		return new Response(template("search for something", []), {
+		return new Response(template("search for something", [], []), {
 			headers: {
 				"content-type": "text/html;charset=UTF-8",
 			}
 		});
 	}
 
+	const startTime = Date.now();
 	const [snowflake, databricks, ons, defra, agrimetrics] = await Promise.all([
-		fetchDataSnowflake(searchTerm),
-		fetchDataDatabricks(searchTerm),
-		fetchDataONS(searchTerm),
-		fetchDataDefra(searchTerm),
-		fetchDataAgrimetrics(searchTerm)
+		fetchDataSnowflake(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Snowflake", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Snowflake", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataDatabricks(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Databricks", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Databricks", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataONS(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "ONS", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "ONS", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataDefra(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Defra", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Defra", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		}),
+		fetchDataAgrimetrics(searchTerm).then(results => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Agrimetrics", durationMs: duration, resultCount: results.length });
+			return results;
+		}).catch(error => {
+			const duration = Date.now() - startTime;
+			stats.push({ source: "Agrimetrics", durationMs: duration, error: error.message, resultCount: 0 });
+			return [];
+		})
 	]);
 
 	// Interweave results from all sources
@@ -51,7 +100,7 @@ router.get("/", async ({ query }) => {
 		}
 	}
 
-	return new Response(template(searchTerm, interweavedResults), {
+	return new Response(template(searchTerm, interweavedResults, stats), {
 		headers: {
 			"content-type": "text/html;charset=UTF-8",
 		}
