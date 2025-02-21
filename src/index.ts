@@ -167,60 +167,67 @@ interface SnowflakeResponse {
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch("https://app.snowflake.com/v0/guest/snowscope/search", {
-		"body": JSON.stringify({
-			query: searchParam,
-			sort: { field: "mostRelevant" },
-			numSnippets: 0,
-			corpus: "marketplace",
-			client: "marketplaceSearch",
-			resultGroups: true
-		}),
-		"method": "POST",
-		cf: {
-			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
-			cacheEverything: true,
-			cacheKey: `snowflake-${searchParam}`
-		}
-	});
-
-	const data = await response.json() as SnowflakeResponse;
-
-	return data.resultGroups[0].results
-		.filter((item: SnowflakeListing) => item.type === "listing")
-		.map((item: SnowflakeListing) => {
-			return {
-				id: item.typeSpecific.globalName,
-				title: item.typeSpecific.listing.title,
-				description: item.typeSpecific.listing.description,
-				subtitle: item.typeSpecific.listing.subtitle,
-				provider: {
-					title: item.typeSpecific.listing.provider.title,
-					description: item.typeSpecific.listing.provider.description,
-					// logo: item.typeSpecific.listing.provider.image,
-				},
-				url: item.typeSpecific.listing.url,
-				updated: new Date(item.typeSpecific.listing.lastPublished).toLocaleString('en-GB', {
-					hour: '2-digit',
-					minute: '2-digit',
-					day: '2-digit',
-					month: '2-digit',
-					year: 'numeric',
-				}).replace(',', ''),
-				source: "Snowflake",
+	try {
+		const response = await fetch("https://app.snowflake.com/v0/guest/snowscope/search", {
+			"body": JSON.stringify({
+				query: searchParam,
+				sort: { field: "mostRelevant" },
+				numSnippets: 0,
+				corpus: "marketplace",
+				client: "marketplaceSearch",
+				resultGroups: true
+			}),
+			"method": "POST",
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `snowflake-${searchParam}`
 			}
-		})
+		});
+
+		const contentType = response.headers.get('content-type');
+		if (!response.ok || !contentType?.includes('application/json')) {
+			console.error(`Snowflake API error: Status ${response.status}, Content-Type: ${contentType}`);
+			return [];
+		}
+
+		const data = await response.json() as SnowflakeResponse;
+
+		if (!data?.resultGroups?.[0]?.results) {
+			console.error('Snowflake API response missing expected data structure');
+			return [];
+		}
+
+		return data.resultGroups[0].results
+			.filter((item: SnowflakeListing) => item.type === "listing")
+			.map((item: SnowflakeListing) => {
+				return {
+					id: item.typeSpecific.globalName,
+					title: item.typeSpecific.listing.title,
+					description: item.typeSpecific.listing.description,
+					subtitle: item.typeSpecific.listing.subtitle,
+					provider: {
+						title: item.typeSpecific.listing.provider.title,
+						description: item.typeSpecific.listing.provider.description,
+					},
+					url: item.typeSpecific.listing.url,
+					updated: new Date(item.typeSpecific.listing.lastPublished).toLocaleString('en-GB', {
+						hour: '2-digit',
+						minute: '2-digit',
+						day: '2-digit',
+						month: '2-digit',
+						year: 'numeric',
+					}).replace(',', ''),
+					source: "Snowflake",
+				}
+			});
+	} catch (error) {
+		console.error('Error fetching Snowflake data:', error);
+		return [];
+	}
 }
 
 async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings", {
-		cf: {
-			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds (14 * 24 * 60 * 60)
-			cacheEverything: true,
-			cacheKey: `databricks`
-		}
-	})
-
 	interface DatabricksListing {
 		id: string;
 		summary: {
@@ -241,106 +248,163 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 		listings: DatabricksListing[];
 	}
 
-	const results = await response.json() as DatabricksResponse;
+	try {
+		const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings", {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `databricks`
+			}
+		});
 
-	const formatted_results = results.listings.map((item: DatabricksListing) => {
-		return {
+		const contentType = response.headers.get('content-type');
+		if (!response.ok || !contentType?.includes('application/json')) {
+			console.error(`Databricks API error: Status ${response.status}, Content-Type: ${contentType}`);
+			return [];
+		}
+
+		const results = await response.json() as DatabricksResponse;
+
+		if (!results?.listings) {
+			console.error('Databricks API response missing expected data structure');
+			return [];
+		}
+
+		const formatted_results = results.listings.map((item: DatabricksListing) => {
+			return {
+				id: item.id,
+				title: item.summary.name,
+				subtitle: item.summary.subtitle,
+				description: item.detail.description,
+				provider: {
+					title: item.provider_summary.name,
+					description: item.provider_summary.description
+				},
+				url: `https://marketplace.databricks.com/details(${item.id})/listing`,
+				source: "Databricks",
+				updated: new Date(parseInt(item.summary.updated_at)).toLocaleString('en-GB', {
+					hour: '2-digit',
+					minute: '2-digit',
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric',
+				}).replace(',', '')
+			}
+		});
+
+		return formatted_results.filter(item =>
+			item.title.toLowerCase().includes(searchParam.toLowerCase()) ||
+			item.description.toLowerCase().includes(searchParam.toLowerCase()) ||
+			item.subtitle.toLowerCase().includes(searchParam.toLowerCase())
+		);
+	} catch (error) {
+		console.error('Error fetching Databricks data:', error);
+		return [];
+	}
+}
+
+async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
+	try {
+		const response = await fetch(`https://ons.metadata.works/_next/data/QT8kYMhY79tILeprNK9a8/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`, {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `ons-${searchParam}`
+			}
+		});
+
+		const contentType = response.headers.get('content-type');
+		if (!response.ok || !contentType?.includes('application/json')) {
+			console.error(`ONS API error: Status ${response.status}, Content-Type: ${contentType}`);
+			return [];
+		}
+
+		const data = await response.json() as ONSSearchResponse;
+
+		if (!data?.pageProps?.searchResult?.content) {
+			console.error('ONS API response missing expected data structure');
+			return [];
+		}
+
+		return data.pageProps.searchResult.content.map(item => ({
 			id: item.id,
-			title: item.summary.name,
-			subtitle: item.summary.subtitle,
-			description: item.detail.description,
+			title: item.title,
+			description: item.abstract,
+			subtitle: item.keywords?.join(", ") || "",
 			provider: {
-				title: item.provider_summary.name,
-				description: item.provider_summary.description
+				title: item.publisher,
+				description: item.origin?.name || "ONS SRS Metadata Catalogue",
 			},
-			url: `https://marketplace.databricks.com/details(${item.id})/listing`,
-			source: "Databricks",
-			updated: new Date(parseInt(item.summary.updated_at)).toLocaleString('en-GB', {
+			url: item.origin?.link || `https://ons.metadata.works/browser/dataset/${item.id}/0`,
+			source: "ONS",
+			updated: new Date(item.modified).toLocaleString('en-GB', {
 				hour: '2-digit',
 				minute: '2-digit',
 				day: '2-digit',
 				month: '2-digit',
 				year: 'numeric',
 			}).replace(',', '')
-		}
-	})
-	const filtered_results = formatted_results.filter(item =>
-		item.title.toLowerCase().includes(searchParam.toLowerCase()) ||
-		item.description.toLowerCase().includes(searchParam.toLowerCase()) ||
-		item.subtitle.toLowerCase().includes(searchParam.toLowerCase())
-	)
-
-	return filtered_results;
-}
-
-async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch(`https://ons.metadata.works/_next/data/QT8kYMhY79tILeprNK9a8/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`, {
-		cf: {
-			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
-			cacheEverything: true,
-			cacheKey: `ons-${searchParam}`
-		}
-	});
-	const data = await response.json() as ONSSearchResponse;
-
-	return data.pageProps.searchResult.content.map(item => ({
-		id: item.id,
-		title: item.title,
-		description: item.abstract,
-		subtitle: item.keywords?.join(", ") || "",
-		provider: {
-			title: item.publisher,
-			description: item.origin?.name || "ONS SRS Metadata Catalogue",
-		},
-		url: item.origin?.link || `https://ons.metadata.works/browser/dataset/${item.id}/0`,
-		source: "ONS",
-		updated: new Date(item.modified).toLocaleString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit',
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric',
-		}).replace(',', '')
-	}));
+		}));
+	} catch (error) {
+		console.error('Error fetching ONS data:', error);
+		return [];
+	}
 }
 
 async function fetchDataDefra(searchParam: string): Promise<ListingResult[]> {
-	const response = await fetch(`https://environment.data.gov.uk/searchresults?query=${encodeURIComponent(searchParam)}&searchtype=&orderby=default&pagesize=10&page=1`, {
-		cf: {
-			cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
-			cacheEverything: true,
-			cacheKey: `defra-${searchParam}`
-		}
-	});
-	const html = await response.text();
+	try {
+		const response = await fetch(`https://environment.data.gov.uk/searchresults?query=${encodeURIComponent(searchParam)}&searchtype=&orderby=default&pagesize=10&page=1`, {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `defra-${searchParam}`
+			}
+		});
 
-	// Extract the JSON data from the __NEXT_DATA__ script tag
-	const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
-	if (!scriptTagMatch) {
+		if (!response.ok) {
+			console.error(`Defra API error: Status ${response.status}`);
+			return [];
+		}
+
+		const html = await response.text();
+
+		// Extract the JSON data from the __NEXT_DATA__ script tag
+		const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+		if (!scriptTagMatch) {
+			console.error('Defra API response missing expected script tag');
+			return [];
+		}
+
+		const data = JSON.parse(scriptTagMatch[1]) as DefraSearchResponse;
+
+		if (!data?.props?.pageProps?.datasets) {
+			console.error('Defra API response missing expected data structure');
+			return [];
+		}
+
+		return data.props.pageProps.datasets.map(item => ({
+			id: item.id,
+			title: item.title,
+			description: item.description,
+			subtitle: item.tags?.join(", ") || "",
+			provider: {
+				title: item.creator,
+				description: "Defra Data Services Platform",
+			},
+			url: `https://environment.data.gov.uk/dataset/${item.id}`,
+			source: "Defra",
+			updated: new Date(item.modified).toLocaleString('en-GB', {
+				hour: '2-digit',
+				minute: '2-digit',
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric',
+			}).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching Defra data:', error);
 		return [];
 	}
-
-	const data = JSON.parse(scriptTagMatch[1]) as DefraSearchResponse;
-
-	return data.props.pageProps.datasets.map(item => ({
-		id: item.id,
-		title: item.title,
-		description: item.description,
-		subtitle: item.tags?.join(", ") || "",
-		provider: {
-			title: item.creator,
-			description: "Defra Data Services Platform",
-		},
-		url: `https://environment.data.gov.uk/dataset/${item.id}`,
-		source: "Defra",
-		updated: new Date(item.modified).toLocaleString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit',
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric',
-		}).replace(',', '')
-	}));
 }
 
 async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
@@ -367,7 +431,19 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 				cacheKey: `agrimetrics-${query}`
 			}
 		});
+
+		const contentType = response.headers.get('content-type');
+		if (!response.ok || !contentType?.includes('application/json')) {
+			console.error(`Agrimetrics API error: Status ${response.status}, Content-Type: ${contentType}`);
+			return [];
+		}
+
 		const data = await response.json() as AgrimetricsSearchResponse;
+
+		if (!data?.dataSets) {
+			console.error('Agrimetrics API response missing expected data structure');
+			return [];
+		}
 
 		return data.dataSets.map((item: AgrimetricsDataSet) => ({
 			id: item.id,
@@ -391,7 +467,7 @@ async function fetchDataAgrimetrics(query: string): Promise<ListingResult[]> {
 			}).replace(',', '')
 		}));
 	} catch (error) {
-		console.error("Error fetching Agrimetrics data:", error);
+		console.error('Error fetching Agrimetrics data:', error);
 		return [];
 	}
 }
