@@ -174,6 +174,25 @@ The Open Data Northern Ireland integration provides access to datasets from the 
 - Robust error handling and UTF-8 encoding support
 - Parallel execution with other data sources
 
+### London Datastore
+
+The London Datastore integration provides access to datasets from the Greater London Authority. Features include:
+
+- Direct integration with London Datastore's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Direct integration with CKAN API
+- Supports advanced search parameters
+- Robust error handling with graceful degradation
+- Custom cache configuration for improved performance
+- Base URL: `https://data.london.gov.uk/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
 ## API Integration Details
 
 ### Response Format

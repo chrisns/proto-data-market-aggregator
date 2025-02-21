@@ -314,6 +314,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataLondonDatastore(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "London Datastore",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "London Datastore",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -558,6 +580,51 @@ interface OpenDataSoftDataset {
 interface OpenDataSoftResponse {
 	total_count: number;
 	results: OpenDataSoftDataset[];
+}
+
+interface LondonDatastoreTag {
+	vocabulary_id: string | null;
+	state: string;
+	display_name: string;
+	id: string | null;
+	name: string;
+}
+
+interface LondonDatastoreResource {
+	position: number;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	id: string;
+}
+
+interface LondonDatastoreOrganization {
+	title: string;
+	id: string;
+	description: string;
+	name: string;
+}
+
+interface LondonDatastoreDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	notes_markdown: string;
+	metadata_modified: string;
+	organization: LondonDatastoreOrganization;
+	maintainer: string;
+	tags: LondonDatastoreTag[];
+	resources: LondonDatastoreResource[];
+}
+
+interface LondonDatastoreResponse {
+	success: boolean;
+	result: {
+		count: number;
+		result: LondonDatastoreDataset[];
+	};
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -1220,6 +1287,54 @@ export async function fetchDataOpenDataNI(searchParam: string): Promise<ListingR
 		}));
 	} catch (error) {
 		console.error('Error fetching from Open Data NI:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataLondonDatastore(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://data.london.gov.uk/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `london-datastore-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`London Datastore API returned ${response.status}`);
+		}
+
+		const data = await response.json() as LondonDatastoreResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.result)) {
+			throw new Error('Invalid response format from London Datastore API');
+		}
+
+		return data.result.result.map(dataset => {
+			const tags = dataset.tags?.map(tag => tag.display_name || tag.name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes_markdown || dataset.notes || '',
+				subtitle: tags.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.maintainer || 'Greater London Authority',
+					description: dataset.organization?.description || 'London Datastore - Greater London Authority'
+				},
+				url: dataset.resources?.[0]?.url || `https://data.london.gov.uk/dataset/${dataset.name}`,
+				source: 'London Datastore',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from London Datastore:', error);
 		throw error;
 	}
 }
