@@ -207,7 +207,6 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
         <h1 class="govuk-heading-xl govuk-!-margin-bottom-4">
             Find government data
         </h1>
-        ${stats_template(stats)}
         <form method="get" action="/" novalidate="">
             <div class="govuk-grid-row mb-5">
                 <div class="govuk-grid-column-two-thirds">
@@ -416,6 +415,7 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
                         </button>
                         <a class="govuk-link" href="https://datamarketplace.gov.uk/catalogdata/getcddodataassets">Clear all</a>
                     </div>
+                    ${stats_template(stats)}
                 </div>
                 <div class="govuk-grid-column-two-thirds">
                     <h2 class="govuk-heading-s govuk-!-margin-bottom-2">${results.length} results</h2>
