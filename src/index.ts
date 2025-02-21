@@ -305,21 +305,52 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 
 async function fetchDataONS(searchParam: string): Promise<ListingResult[]> {
 	try {
-		const response = await fetch(`https://ons.metadata.works/_next/data/QT8kYMhY79tILeprNK9a8/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`, {
+		// First, fetch the page to get the build ID
+		const pageResponse = await fetch('https://ons.metadata.works/browser/search', {
 			cf: {
-				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 },
 				cacheEverything: true,
-				cacheKey: `ons-${searchParam}`
+				cacheKey: 'ons-buildid'
 			}
 		});
 
-		const contentType = response.headers.get('content-type');
-		if (!response.ok || !contentType?.includes('application/json')) {
-			console.error(`ONS API error: Status ${response.status}, Content-Type: ${contentType}`);
+		if (!pageResponse.ok) {
+			console.error(`ONS initial page fetch error: Status ${pageResponse.status}`);
 			return [];
 		}
 
-		const data = await response.json() as ONSSearchResponse;
+		const html = await pageResponse.text();
+		const scriptTagMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+
+		if (!scriptTagMatch) {
+			console.error('ONS page missing __NEXT_DATA__ script tag');
+			return [];
+		}
+
+		const nextData = JSON.parse(scriptTagMatch[1]);
+		const buildId = nextData.buildId;
+
+		if (!buildId) {
+			console.error('ONS page missing buildId');
+			return [];
+		}
+
+		// Now make the actual search request with the current buildId
+		const searchResponse = await fetch(`https://ons.metadata.works/_next/data/${buildId}/browser/search.json?searchterm=${encodeURIComponent(searchParam)}`, {
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 },
+				cacheEverything: true,
+				cacheKey: `ons-search-${searchParam}`
+			}
+		});
+
+		const contentType = searchResponse.headers.get('content-type');
+		if (!searchResponse.ok || !contentType?.includes('application/json')) {
+			console.error(`ONS search API error: Status ${searchResponse.status}, Content-Type: ${contentType}`);
+			return [];
+		}
+
+		const data = await searchResponse.json() as ONSSearchResponse;
 
 		if (!data?.pageProps?.searchResult?.content) {
 			console.error('ONS API response missing expected data structure');
