@@ -270,6 +270,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataNHSBSA(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "NHSBSA",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "NHSBSA",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -1086,6 +1108,51 @@ export async function fetchDataOpenDataSoft(searchParam: string): Promise<Listin
 		});
 	} catch (error) {
 		console.error('Error fetching OpenDataSoft data:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataNHSBSA(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://opendata.nhsbsa.net/api/3/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `nhsbsa-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`NHSBSA API returned ${response.status}`);
+		}
+
+		const data = await response.json() as DataGovUKResponse; // Reusing the same interface since it's CKAN format
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from NHSBSA API');
+		}
+
+		return data.result.results.map(dataset => ({
+			id: dataset.id,
+			title: dataset.title,
+			description: dataset.notes || '',
+			subtitle: dataset.license_title || '',
+			provider: {
+				title: dataset.organization?.title || 'NHS Business Services Authority',
+				description: dataset.organization?.description || 'NHS Business Services Authority Open Data Portal'
+			},
+			url: dataset.resources?.[0]?.url || `https://opendata.nhsbsa.net/dataset/${dataset.id}`,
+			source: 'NHSBSA',
+			updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching from NHSBSA:', error);
 		throw error;
 	}
 }
