@@ -408,6 +408,9 @@ router.get("/", async (req) => {
 		const allResults = results.flat();
 		const interwovenResults = interweaveResults(allResults);
 
+		// Sort queryStats alphabetically by source
+		queryStats.sort((a, b) => a.source.localeCompare(b.source));
+
 		return new Response(template(searchParam, interwovenResults, queryStats), {
 			headers: {
 				"content-type": "text/html;charset=UTF-8",
