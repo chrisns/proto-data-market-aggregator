@@ -292,6 +292,116 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataOpenDataNI(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Open Data NI",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Open Data NI",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataLondonDatastore(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "London Datastore",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "London Datastore",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataSSEN(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "SSEN",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "SSEN",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataYorkOpenData(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "York Open Data",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "York Open Data",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
+				}),
+			fetchDataHealthDataGateway(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Health Data Gateway",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "Health Data Gateway",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -536,6 +646,186 @@ interface OpenDataSoftDataset {
 interface OpenDataSoftResponse {
 	total_count: number;
 	results: OpenDataSoftDataset[];
+}
+
+interface LondonDatastoreTag {
+	vocabulary_id: string | null;
+	state: string;
+	display_name: string;
+	id: string | null;
+	name: string;
+}
+
+interface LondonDatastoreResource {
+	position: number;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	id: string;
+}
+
+interface LondonDatastoreOrganization {
+	title: string;
+	id: string;
+	description: string;
+	name: string;
+}
+
+interface LondonDatastoreDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	notes_markdown: string;
+	metadata_modified: string;
+	organization: LondonDatastoreOrganization;
+	maintainer: string;
+	tags: LondonDatastoreTag[];
+	resources: LondonDatastoreResource[];
+}
+
+interface LondonDatastoreResponse {
+	success: boolean;
+	result: {
+		count: number;
+		result: LondonDatastoreDataset[];
+	};
+}
+
+interface SSENTag {
+	display_name: string;
+	id: string;
+	name: string;
+	state: string;
+	vocabulary_id: string | null;
+}
+
+interface SSENResource {
+	id: string;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	created: string;
+	last_modified: string;
+	size: number | null;
+}
+
+interface SSENOrganization {
+	id: string;
+	name: string;
+	title: string;
+	description: string;
+	type: string;
+	image_url: string;
+}
+
+interface SSENDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	metadata_modified: string;
+	organization: SSENOrganization;
+	author: string;
+	license_title: string;
+	tags: SSENTag[];
+	resources: SSENResource[];
+	url: string;
+}
+
+interface SSENResponse {
+	success: boolean;
+	result: {
+		count: number;
+		results: SSENDataset[];
+	};
+}
+
+interface YorkOpenDataGroup {
+	display_name: string;
+	description: string;
+	image_display_url: string;
+	title: string;
+	id: string;
+	name: string;
+}
+
+interface YorkOpenDataResource {
+	id: string;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	created: string;
+	state: string;
+	last_modified: string | null;
+	size: number | null;
+}
+
+interface YorkOpenDataOrganization {
+	description: string;
+	created: string;
+	title: string;
+	name: string;
+	is_organization: boolean;
+	state: string;
+	image_url: string;
+	type: string;
+	id: string;
+	approval_status: string;
+}
+
+interface YorkOpenDataDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	metadata_modified: string;
+	metadata_created: string;
+	organization: YorkOpenDataOrganization;
+	author: string;
+	maintainer: string;
+	license_title: string;
+	groups: YorkOpenDataGroup[];
+	resources: YorkOpenDataResource[];
+	url: string;
+}
+
+interface YorkOpenDataResponse {
+	success: boolean;
+	result: {
+		count: number;
+		results: YorkOpenDataDataset[];
+	};
+}
+
+interface HealthDataGatewayMetadata {
+	summary: {
+		title: string;
+		abstract: string;
+		description: string;
+		keywords: string;
+		publisher: {
+			name: string;
+			gatewayId: number;
+		};
+		shortTitle: string;
+		datasetType: string;
+		contactPoint: string;
+		datasetSubType: string;
+		populationSize: number;
+	};
+}
+
+interface HealthDataGatewayDataset {
+	_id: string;
+	metadata: HealthDataGatewayMetadata;
+}
+
+interface HealthDataGatewayResponse {
+	data: HealthDataGatewayDataset[];
 }
 
 async function fetchDataSnowflake(searchParam: string): Promise<ListingResult[]> {
@@ -1153,6 +1443,247 @@ export async function fetchDataNHSBSA(searchParam: string): Promise<ListingResul
 		}));
 	} catch (error) {
 		console.error('Error fetching from NHSBSA:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataOpenDataNI(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://admin.opendatani.gov.uk/api/3/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `opendatani-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Open Data NI API returned ${response.status}`);
+		}
+
+		const data = await response.json() as DataGovUKResponse; // Reusing the same interface since it's CKAN format
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from Open Data NI API');
+		}
+
+		return data.result.results.map(dataset => ({
+			id: dataset.id,
+			title: dataset.title,
+			description: dataset.notes || '',
+			subtitle: dataset.license_title || '',
+			provider: {
+				title: dataset.organization?.title || 'Open Data Northern Ireland',
+				description: dataset.organization?.description || 'Open Data Northern Ireland Portal'
+			},
+			url: dataset.resources?.[0]?.url || `https://admin.opendatani.gov.uk/dataset/${dataset.id}`,
+			source: 'Open Data NI',
+			updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+		}));
+	} catch (error) {
+		console.error('Error fetching from Open Data NI:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataLondonDatastore(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://data.london.gov.uk/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `london-datastore-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`London Datastore API returned ${response.status}`);
+		}
+
+		const data = await response.json() as LondonDatastoreResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.result)) {
+			throw new Error('Invalid response format from London Datastore API');
+		}
+
+		return data.result.result.map(dataset => {
+			const tags = dataset.tags?.map(tag => tag.display_name || tag.name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes_markdown || dataset.notes || '',
+				subtitle: tags.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.maintainer || 'Greater London Authority',
+					description: dataset.organization?.description || 'London Datastore - Greater London Authority'
+				},
+				url: dataset.resources?.[0]?.url || `https://data.london.gov.uk/dataset/${dataset.name}`,
+				source: 'London Datastore',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from London Datastore:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataSSEN(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://ckan-prod.sse.datopian.com/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `ssen-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`SSEN API returned ${response.status}`);
+		}
+
+		const data = await response.json() as SSENResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from SSEN API');
+		}
+
+		return data.result.results.map(dataset => {
+			const tags = dataset.tags?.map(tag => tag.display_name || tag.name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes || '',
+				subtitle: tags.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.author || 'SSEN Distribution',
+					description: dataset.organization?.description || 'Scottish and Southern Electricity Networks Distribution'
+				},
+				url: dataset.url || dataset.resources?.[0]?.url || `https://ckan-prod.sse.datopian.com/dataset/${dataset.name}`,
+				source: 'SSEN',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from SSEN:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataYorkOpenData(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://data.yorkopendata.org/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `york-opendata-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`York Open Data API returned ${response.status}`);
+		}
+
+		const data = await response.json() as YorkOpenDataResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from York Open Data API');
+		}
+
+		return data.result.results.map(dataset => {
+			const groups = dataset.groups?.map(group => group.display_name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes || '',
+				subtitle: groups.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.maintainer || 'City of York Council',
+					description: dataset.organization?.description || 'York Open Data - City of York Council'
+				},
+				url: dataset.url || dataset.resources?.[0]?.url || `https://data.yorkopendata.org/dataset/${dataset.name}`,
+				source: 'York Open Data',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from York Open Data:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataHealthDataGateway(searchParam: string): Promise<ListingResult[]> {
+	const url = 'https://api.healthdatagateway.org/api/v1/search/datasets?view_type=mini&perPage=25&page=1&sort=score:desc';
+
+	try {
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				query: searchParam
+			}),
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `health-data-gateway-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Health Data Gateway API returned ${response.status}`);
+		}
+
+		const data = await response.json() as HealthDataGatewayResponse;
+
+		if (!Array.isArray(data.data)) {
+			throw new Error('Invalid response format from Health Data Gateway API');
+		}
+
+		return data.data.map(dataset => {
+			const keywords = dataset.metadata.summary.keywords?.split(';,;').filter(Boolean) || [];
+			return {
+				id: dataset._id,
+				title: dataset.metadata.summary.title,
+				description: dataset.metadata.summary.description || dataset.metadata.summary.abstract || '',
+				subtitle: keywords.join(", "),
+				provider: {
+					title: dataset.metadata.summary.publisher?.name || 'Health Data Gateway',
+					description: `${dataset.metadata.summary.datasetType} - Health Data Gateway`
+				},
+				url: `https://healthdatagateway.org/dataset/${dataset._id}`,
+				source: 'Health Data Gateway',
+				updated: 'unknown' // API doesn't provide update time
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from Health Data Gateway:', error);
 		throw error;
 	}
 }

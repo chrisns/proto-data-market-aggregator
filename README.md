@@ -158,6 +158,110 @@ The NHS Business Services Authority (NHSBSA) Open Data Portal integration provid
 - Robust error handling and UTF-8 encoding support
 - Parallel execution with other data sources
 
+### Open Data Northern Ireland
+
+The Open Data Northern Ireland integration provides access to datasets from the Northern Ireland public sector. Features include:
+
+- Direct integration with Open Data NI's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all Open Data NI datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+
+### SSEN Distribution
+
+The SSEN (Scottish and Southern Electricity Networks) Distribution integration provides access to electricity network data. Features include:
+
+- Direct integration with SSEN's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - Author details
+  - Tags and categories
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all SSEN datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://ckan-prod.sse.datopian.com/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
+### London Datastore
+
+The London Datastore integration provides access to datasets from the Greater London Authority. Features include:
+
+- Direct integration with London Datastore's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Direct integration with CKAN API
+- Supports advanced search parameters
+- Robust error handling with graceful degradation
+- Custom cache configuration for improved performance
+- Base URL: `https://data.london.gov.uk/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
+### York Open Data
+
+The York Open Data integration provides access to datasets from the City of York Council. Features include:
+
+- Direct integration with York Open Data's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - Author and maintainer details
+  - Groups and categories
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all York Open Data datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://data.yorkopendata.org/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
+### Health Data Gateway
+
+The Health Data Gateway integration provides access to health-related datasets from various UK health organizations. Features include:
+
+- Direct integration with Health Data Gateway's search API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Publisher information
+  - Dataset type and subtype
+  - Keywords and categories
+  - Contact information
+  - Population size data
+- Supports full-text search across all Health Data Gateway datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://api.healthdatagateway.org/api/v1/search/datasets`
+- Query Parameters:
+  - `view_type`: mini
+  - `perPage`: 25
+  - `page`: 1
+  - `sort`: score:desc
+- POST request with JSON payload:
+  ```json
+  {
+    "query": "search_term"
+  }
+  ```
+
 ## API Integration Details
 
 ### Response Format
