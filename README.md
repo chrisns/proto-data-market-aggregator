@@ -87,6 +87,18 @@ Each data source uses a unique cache key format:
 - Direct integration with the Agrimetrics API
 - Robust error handling with graceful degradation
 
+### Datarade Marketplace
+- Searches through Datarade's data marketplace
+- Returns product information including:
+  - Product title and description
+  - Provider/author information
+  - Direct links to product pages
+  - Product body text with detailed information
+- HTML response parsing with robust error handling
+- Graceful handling of malformed responses
+- Input validation and URL encoding
+- Direct integration with Datarade's search interface
+
 ## API Integration Details
 
 ### Response Format
@@ -104,6 +116,21 @@ interface ListingResult {
     url: string;
     source: string;
     updated: string;
+}
+```
+
+### Datarade API
+The integration with Datarade uses their search interface with the following details:
+- Base URL: `https://datarade.ai/search/products`
+- Query Parameters:
+  - `keywords`: The search query
+- Response Format:
+```typescript
+interface DataradeProduct {
+    title: string;      // Product title from h3.product-card__title
+    subtitle: string;   // Author/provider from span.product-card__subtitle__author
+    link: string;       // Full URL to product page
+    body: string;       // Detailed description from div.product-card__body
 }
 ```
 
