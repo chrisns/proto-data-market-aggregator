@@ -213,6 +213,26 @@ The London Datastore integration provides access to datasets from the Greater Lo
 - Query Parameters:
   - `q`: The search query
 
+### York Open Data
+
+The York Open Data integration provides access to datasets from the City of York Council. Features include:
+
+- Direct integration with York Open Data's CKAN-based API
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - Author and maintainer details
+  - Groups and categories
+  - Resource URLs and formats
+  - Last modified dates
+- Supports full-text search across all York Open Data datasets
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling and UTF-8 encoding support
+- Parallel execution with other data sources
+- Base URL: `https://data.yorkopendata.org/api/action/package_search`
+- Query Parameters:
+  - `q`: The search query
+
 ## API Integration Details
 
 ### Response Format

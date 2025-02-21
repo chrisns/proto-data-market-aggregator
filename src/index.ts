@@ -358,6 +358,28 @@ router.get("/", async (req) => {
 						error: error.message
 					});
 					return [];
+				}),
+			fetchDataYorkOpenData(searchParam)
+				.then(results => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "York Open Data",
+						duration: duration,
+						durationMs: duration,
+						resultCount: results.length
+					});
+					return results;
+				})
+				.catch(error => {
+					const duration = Date.now() - startTime;
+					queryStats.push({
+						source: "York Open Data",
+						duration: duration,
+						durationMs: duration,
+						resultCount: 0,
+						error: error.message
+					});
+					return [];
 				})
 		]);
 
@@ -696,6 +718,64 @@ interface SSENResponse {
 	result: {
 		count: number;
 		results: SSENDataset[];
+	};
+}
+
+interface YorkOpenDataGroup {
+	display_name: string;
+	description: string;
+	image_display_url: string;
+	title: string;
+	id: string;
+	name: string;
+}
+
+interface YorkOpenDataResource {
+	id: string;
+	url: string;
+	format: string;
+	name: string;
+	description: string;
+	created: string;
+	state: string;
+	last_modified: string | null;
+	size: number | null;
+}
+
+interface YorkOpenDataOrganization {
+	description: string;
+	created: string;
+	title: string;
+	name: string;
+	is_organization: boolean;
+	state: string;
+	image_url: string;
+	type: string;
+	id: string;
+	approval_status: string;
+}
+
+interface YorkOpenDataDataset {
+	id: string;
+	title: string;
+	name: string;
+	notes: string;
+	metadata_modified: string;
+	metadata_created: string;
+	organization: YorkOpenDataOrganization;
+	author: string;
+	maintainer: string;
+	license_title: string;
+	groups: YorkOpenDataGroup[];
+	resources: YorkOpenDataResource[];
+	url: string;
+}
+
+interface YorkOpenDataResponse {
+	success: boolean;
+	result: {
+		count: number;
+		results: YorkOpenDataDataset[];
 	};
 }
 
@@ -1455,6 +1535,54 @@ export async function fetchDataSSEN(searchParam: string): Promise<ListingResult[
 		});
 	} catch (error) {
 		console.error('Error fetching from SSEN:', error);
+		throw error;
+	}
+}
+
+export async function fetchDataYorkOpenData(searchParam: string): Promise<ListingResult[]> {
+	const url = `https://data.yorkopendata.org/api/action/package_search?q=${encodeURIComponent(searchParam)}`;
+
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json'
+			},
+			cf: {
+				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
+				cacheEverything: true,
+				cacheKey: `york-opendata-${searchParam}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`York Open Data API returned ${response.status}`);
+		}
+
+		const data = await response.json() as YorkOpenDataResponse;
+
+		if (!data.success || !data.result || !Array.isArray(data.result.results)) {
+			throw new Error('Invalid response format from York Open Data API');
+		}
+
+		return data.result.results.map(dataset => {
+			const groups = dataset.groups?.map(group => group.display_name) || [];
+			return {
+				id: dataset.id,
+				title: dataset.title,
+				description: dataset.notes || '',
+				subtitle: groups.join(", "),
+				provider: {
+					title: dataset.organization?.title || dataset.maintainer || 'City of York Council',
+					description: dataset.organization?.description || 'York Open Data - City of York Council'
+				},
+				url: dataset.url || dataset.resources?.[0]?.url || `https://data.yorkopendata.org/dataset/${dataset.name}`,
+				source: 'York Open Data',
+				updated: new Date(dataset.metadata_modified).toLocaleString('en-GB', DATE_FORMAT).replace(',', '')
+			};
+		});
+	} catch (error) {
+		console.error('Error fetching from York Open Data:', error);
 		throw error;
 	}
 }
