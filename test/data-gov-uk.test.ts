@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchDataGovUK } from '../src/index';
+import { fetchDataGovUK, DATE_FORMAT } from '../src/index';
 
 describe('fetchDataGovUK', () => {
   const originalFetch = globalThis.fetch;
@@ -14,6 +14,8 @@ describe('fetchDataGovUK', () => {
 
   it('constructs the correct API URL and request body', async () => {
     const testDate = '2024-03-20T12:00:00Z';
+    const expectedDate = new Date(testDate).toLocaleString('en-GB', DATE_FORMAT).replace(',', '');
+
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -64,13 +66,7 @@ describe('fetchDataGovUK', () => {
       },
       url: 'https://example.com/dataset',
       source: 'data.gov.uk',
-      updated: new Date(testDate).toLocaleString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).replace(',', '')
+      updated: expectedDate
     });
   });
 

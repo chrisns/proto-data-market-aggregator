@@ -5,7 +5,7 @@ import template from "./template"
 
 const router = Router()
 
-const DATE_FORMAT: Intl.DateTimeFormatOptions = {
+export const DATE_FORMAT: Intl.DateTimeFormatOptions = {
 	hour: '2-digit',
 	minute: '2-digit',
 	day: '2-digit',
@@ -17,7 +17,7 @@ interface QueryStats {
 	source: string;
 	duration: number;
 	durationMs: number;
-	resultCount?: number;
+	resultCount: number;
 	error?: string;
 }
 
@@ -61,7 +61,12 @@ router.get("/", async (req) => {
 	const queryStats: QueryStats[] = [];
 
 	if (!searchParam) {
-		return Response.redirect(`${url.origin}/index.html`, 302);
+		return new Response(template('', [], []), {
+			headers: {
+				"content-type": "text/html;charset=UTF-8",
+				"Cache-Control": getCacheControlHeader()
+			},
+		});
 	}
 
 	const startTime = Date.now();
@@ -85,6 +90,7 @@ router.get("/", async (req) => {
 						source: "Snowflake",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -106,6 +112,7 @@ router.get("/", async (req) => {
 						source: "Databricks",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -127,6 +134,7 @@ router.get("/", async (req) => {
 						source: "ONS",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -148,6 +156,7 @@ router.get("/", async (req) => {
 						source: "Defra",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -169,6 +178,7 @@ router.get("/", async (req) => {
 						source: "Agrimetrics",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -190,6 +200,7 @@ router.get("/", async (req) => {
 						source: "AWS Marketplace",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -211,6 +222,7 @@ router.get("/", async (req) => {
 						source: "Datarade",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
@@ -232,6 +244,7 @@ router.get("/", async (req) => {
 						source: "data.gov.uk",
 						duration: duration,
 						durationMs: duration,
+						resultCount: 0,
 						error: error.message
 					});
 					return [];
