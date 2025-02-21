@@ -126,6 +126,21 @@ Each data source uses a unique cache key format:
 - Robust error handling with graceful degradation
 - Custom cache configuration for improved performance
 
+### NHS BSA Open Data Portal
+- Searches through NHS Business Services Authority's open data portal
+- Returns comprehensive dataset information including:
+  - Dataset title and description
+  - Organization information
+  - License details
+  - Resource URLs and formats
+  - Last modified dates
+- Direct integration with CKAN API v3
+- Supports advanced search parameters
+- Intelligent caching with 2-week duration for successful responses
+- Robust error handling with graceful degradation
+- Fallback URLs to dataset pages when resource URLs are unavailable
+- Consistent date formatting across all results
+
 ## API Integration Details
 
 ### Response Format
