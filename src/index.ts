@@ -21,11 +21,11 @@ interface QueryStats {
 	error?: string;
 }
 
-function getCacheControlHeader(): string {
+export function getCacheControlHeader(): string {
 	return 'public, max-age=1209600, stale-while-revalidate=86400'; // 2 weeks cache, 1 day stale
 }
 
-function interweaveResults(results: ListingResult[]): ListingResult[] {
+export function interweaveResults(results: ListingResult[]): ListingResult[] {
 	const sourceGroups = new Map<string, ListingResult[]>();
 
 	// Group results by source
@@ -408,6 +408,9 @@ router.get("/", async (req) => {
 		const allResults = results.flat();
 		const interwovenResults = interweaveResults(allResults);
 
+		// Sort queryStats alphabetically by source
+		queryStats.sort((a, b) => a.source.localeCompare(b.source));
+
 		return new Response(template(searchParam, interwovenResults, queryStats), {
 			headers: {
 				"content-type": "text/html;charset=UTF-8",
@@ -683,6 +686,7 @@ interface LondonDatastoreDataset {
 	maintainer: string;
 	tags: LondonDatastoreTag[];
 	resources: LondonDatastoreResource[];
+	license_title: string;
 }
 
 interface LondonDatastoreResponse {
@@ -1519,12 +1523,11 @@ export async function fetchDataLondonDatastore(searchParam: string): Promise<Lis
 		}
 
 		return data.result.result.map(dataset => {
-			const tags = dataset.tags?.map(tag => tag.display_name || tag.name) || [];
 			return {
 				id: dataset.id,
 				title: dataset.title,
 				description: dataset.notes_markdown || dataset.notes || '',
-				subtitle: tags.join(", "),
+				subtitle: dataset.license_title || '',
 				provider: {
 					title: dataset.organization?.title || dataset.maintainer || 'Greater London Authority',
 					description: dataset.organization?.description || 'London Datastore - Greater London Authority'

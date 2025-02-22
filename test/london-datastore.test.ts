@@ -28,7 +28,8 @@ describe('London Datastore Integration', () => {
     const mockResponse = {
       success: true,
       result: {
-        results: [mockDataset]
+        count: 1,
+        result: [mockDataset]
       }
     };
 
@@ -74,7 +75,8 @@ describe('London Datastore Integration', () => {
     const mockResponse = {
       success: true,
       result: {
-        results: []
+        count: 0,
+        result: []
       }
     };
 
