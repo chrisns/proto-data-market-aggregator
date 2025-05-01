@@ -84,13 +84,13 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
 <meta name="theme-color" content="#0b0c0c">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-<link rel="shortcut icon" sizes="16x16 32x32 48x48" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/assets/images/favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" sizes="16x16 32x32 48x48" href="https://cdn.jsdelivr.net/gh/co-cddo/data-marketplace-beta@main/Cddo.Data.Marketplace.UI/wwwroot/assets/images/favicon.ico" type="image/x-icon">
 
-<link rel="stylesheet" href="https://datamarketplace.gov.uk/lib/bootstrap/dist/css/bootstrap.min.css" />
-<link rel="stylesheet" href="https://datamarketplace.gov.uk/lib/govuk-frontend/dist/govuk/govuk-frontend.min.css">
-<link rel="stylesheet" href="https://datamarketplace.gov.uk/css/site.css?v=Vd7D5LXtUBbAA63hSnmCMYo12gL9vArQpEfVam5Q6jY" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/co-cddo/data-marketplace-beta@main/Cddo.Data.Marketplace.UI/wwwroot/lib/bootstrap/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/co-cddo/data-marketplace-beta@main/Cddo.Data.Marketplace.UI/wwwroot/css/govuk-frontend-5.7.1.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/co-cddo/data-marketplace-beta@main/Cddo.Data.Marketplace.UI/wwwroot/css/site.css" />
     
-    <link rel="stylesheet" href="https://datamarketplace.gov.uk/css/dataset-results.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/co-cddo/data-marketplace-beta@main/Cddo.Data.Marketplace.UI/wwwroot/css/dataset-results.min.css" />
     <style>
         .suggestions {
             list-style-type: none;
@@ -118,12 +118,6 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
                 }
     </style>
 
-<!--[if !IE 8]><!-->
-    <link rel="stylesheet" href="https://datamarketplace.gov.uk/govuk-frontend-4.8.0.min.css">
-<!--<![endif]-->
-<!--[if IE 8]>
-    <link rel = "stylesheet" href="https://datamarketplace.gov.uk/govuk-frontend-ie8-4.8.0.min.css">
-<![endif]-->
 </head>
 <body class="govuk-template__body">
 <script>document.body.className = document.body.className + ' js-enabled';</script>
