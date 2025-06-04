@@ -79,7 +79,7 @@ const template = (searchterm: string, results: ListingResult[], stats: QueryStat
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Data set Results -  Data Marketplace</title>
+<title>Dataset Results - Data Marketplace</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0c0c">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
