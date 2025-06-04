@@ -12,7 +12,7 @@ describe('OpenDataSoft Integration', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('constructs the correct API URL and request body', async () => {
+  it('constructs the correct API URL', async () => {
     const testDate = '2024-03-20T12:00:00Z';
     const expectedDate = new Date(testDate).toLocaleString('en-GB', DATE_FORMAT).replace(',', '');
 
