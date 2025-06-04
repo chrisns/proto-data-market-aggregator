@@ -14,7 +14,7 @@ describe('Databricks Integration', () => {
     const searchTerm = 'example';
     const databricksResponse = { listings: [] };
     (global.fetch as Mock).mockImplementation((url: string) => {
-      if (url.includes('marketplace.databricks.com')) {
+      if (new URL(url).hostname === 'marketplace.databricks.com') {
         return Promise.resolve({
           ok: true,
           headers: new Headers({ 'content-type': 'application/json' }),
