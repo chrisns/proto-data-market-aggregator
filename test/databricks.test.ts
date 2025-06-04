@@ -63,6 +63,28 @@ describe('Databricks Integration', () => {
     });
   });
 
+  it('uses a distinct cacheKey for each search term', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ listings: [] })
+    } as Response);
+
+    await fetchDataDatabricks('alpha');
+    await fetchDataDatabricks('beta');
+
+    expect(vi.mocked(fetch).mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        cf: expect.objectContaining({ cacheKey: 'databricks-alpha' })
+      })
+    );
+    expect(vi.mocked(fetch).mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        cf: expect.objectContaining({ cacheKey: 'databricks-beta' })
+      })
+    );
+  });
+
   it('handles API errors gracefully', async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error('API Error'));
     await expect(fetchDataDatabricks('test')).resolves.toEqual([]);
