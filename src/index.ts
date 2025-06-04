@@ -914,8 +914,8 @@ async function fetchDataDatabricks(searchParam: string): Promise<ListingResult[]
 		const response = await fetch("https://marketplace.databricks.com/api/2.0/public-marketplace-listings", {
 			cf: {
 				cacheTtlByStatus: { "200-299": 1209600, 404: 1, "500-599": 0 }, // 2 weeks in seconds
-				cacheEverything: true,
-				cacheKey: `databricks`
+                                cacheEverything: true,
+                                cacheKey: `databricks-${searchParam}`
 			}
 		});
 
